@@ -36,7 +36,7 @@ const handleLogin = async () => {
     <div class="auth-page__inner">
       <div class="auth-page__hero">
         <p class="eyebrow">Fuel Ledger System</p>
-        <h1>Catat stok & pemakaian bensin dengan presisi.</h1>
+        <h1>Catat stok & pemakaian solar dengan presisi.</h1>
         <p class="subtitle">
           Platform terintegrasi untuk tim admin & operasional Bosowa. Data real time,
           approval jelas, audit trail otomatis.

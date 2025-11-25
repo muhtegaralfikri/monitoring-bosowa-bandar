@@ -46,8 +46,13 @@ const siteKeys: SiteKey[] = ['LANTEBUNG', 'JENEPONTO'];
 const siteSummaryCards = computed(() =>
   siteKeys.map((site) => {
     const data = siteSummaries.value[site];
+    const title =
+      site === 'LANTEBUNG'
+        ? 'Monitoring Solar Genset (Lantebung)'
+        : 'Monitoring Solar Tug Assist (Jeneponto)';
     return {
       site,
+      title,
       cards: [
         {
           key: `${site}-opening`,
@@ -209,7 +214,7 @@ const siteInOutChartData = computed(() => {
       :key="siteBlock.site"
       class="site-section"
     >
-      <h3 class="site-title">Site {{ siteBlock.site }}</h3>
+      <h3 class="site-title">{{ siteBlock.title }}</h3>
       <div class="grid summary-grid">
         <div
           v-for="metric in siteBlock.cards"
