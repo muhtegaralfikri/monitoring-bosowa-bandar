@@ -25,6 +25,9 @@ export class TransactionEntity {
   @Column({ type: 'text', nullable: true })
   description: string;
 
+  @Column({ length: 50, default: 'LANTEBUNG' })
+  category: string;
+
   // Relasi: Banyak Transaksi diinput oleh satu User
   @ManyToOne(() => UserEntity)
   @JoinColumn({ name: 'user_id' }) // Nama kolom foreign key

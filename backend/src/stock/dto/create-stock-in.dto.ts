@@ -1,6 +1,6 @@
 // /backend/src/stock/dto/create-stock-in.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsPositive, IsString, IsOptional } from 'class-validator';
+import { IsIn, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
 
 export class CreateStockInDto {
   @ApiProperty({
@@ -19,4 +19,14 @@ export class CreateStockInDto {
   @IsOptional()
   @IsString()
   description: string;
+
+  @ApiProperty({
+    description: 'Site asal stok',
+    enum: ['LANTEBUNG', 'JENEPONTO'],
+    example: 'LANTEBUNG',
+  })
+  @IsString()
+  @IsNotEmpty()
+  @IsIn(['LANTEBUNG', 'JENEPONTO'])
+  category: string;
 }

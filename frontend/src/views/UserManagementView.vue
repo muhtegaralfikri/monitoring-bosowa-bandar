@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue';
+import { reactive, ref, onMounted, watch } from 'vue';
 import Card from 'primevue/card';
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
@@ -16,6 +16,7 @@ interface UserItem {
   username: string;
   email: string;
   role: string;
+  site?: string;
   createdAt: string;
 }
 
@@ -29,12 +30,18 @@ const roleOptions = [
   { label: 'Admin', value: 'admin' },
   { label: 'Operasional', value: 'operasional' },
 ];
+const siteOptions = [
+  { label: 'Semua (ALL)', value: 'ALL' },
+  { label: 'Lantebung', value: 'LANTEBUNG' },
+  { label: 'Jeneponto', value: 'JENEPONTO' },
+];
 
 const createForm = reactive({
   username: '',
   email: '',
   password: '',
   role: 'admin' as 'admin' | 'operasional',
+  site: 'ALL' as 'ALL' | 'LANTEBUNG' | 'JENEPONTO',
 });
 const createLoading = ref(false);
 
@@ -45,6 +52,7 @@ const editForm = reactive({
   email: '',
   password: '',
   role: 'operasional' as 'admin' | 'operasional',
+  site: 'ALL' as 'ALL' | 'LANTEBUNG' | 'JENEPONTO',
 });
 const editLoading = ref(false);
 
@@ -61,6 +69,7 @@ const resetCreateForm = () => {
   createForm.email = '';
   createForm.password = '';
   createForm.role = 'admin';
+  createForm.site = 'ALL';
 };
 
 const fetchUsers = async () => {
@@ -88,6 +97,18 @@ const handleCreate = async () => {
     });
     return;
   }
+  if (
+    createForm.role === 'operasional' &&
+    (!createForm.site || createForm.site === 'ALL')
+  ) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Site belum dipilih',
+      detail: 'Operasional harus terikat ke LANTEBUNG atau JENEPONTO.',
+      life: 3000,
+    });
+    return;
+  }
   createLoading.value = true;
   try {
     await apiClient.post('/users', {
@@ -95,6 +116,7 @@ const handleCreate = async () => {
       email: createForm.email,
       password: createForm.password,
       role: createForm.role,
+      site: createForm.role === 'admin' ? 'ALL' : createForm.site,
     });
     toast.add({
       severity: 'success',
@@ -122,6 +144,7 @@ const openEdit = (user: UserItem) => {
   editForm.email = user.email;
   editForm.role = (user.role as 'admin' | 'operasional') ?? 'operasional';
   editForm.password = '';
+  editForm.site = (user.site as any) ?? 'ALL';
   editDialogVisible.value = true;
 };
 
@@ -136,12 +159,25 @@ const handleEdit = async () => {
     });
     return;
   }
+  if (
+    editForm.role === 'operasional' &&
+    (!editForm.site || editForm.site === 'ALL')
+  ) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Site belum dipilih',
+      detail: 'Operasional harus terikat ke LANTEBUNG atau JENEPONTO.',
+      life: 3000,
+    });
+    return;
+  }
   editLoading.value = true;
   try {
     const payload: Record<string, string> = {
       username: editForm.username,
       email: editForm.email,
       role: editForm.role,
+      site: editForm.role === 'admin' ? 'ALL' : editForm.site,
     };
     if (editForm.password) {
       payload.password = editForm.password;
@@ -197,6 +233,28 @@ const handleDelete = async (user: UserItem) => {
 onMounted(() => {
   fetchUsers();
 });
+
+watch(
+  () => createForm.role,
+  (role) => {
+    if (role === 'admin') {
+      createForm.site = 'ALL';
+    } else if (createForm.site === 'ALL') {
+      createForm.site = 'LANTEBUNG';
+    }
+  },
+);
+
+watch(
+  () => editForm.role,
+  (role) => {
+    if (role === 'admin') {
+      editForm.site = 'ALL';
+    } else if (editForm.site === 'ALL') {
+      editForm.site = 'LANTEBUNG';
+    }
+  },
+);
 </script>
 
 <template>
@@ -252,13 +310,27 @@ onMounted(() => {
                 class="w-full"
               />
             </div>
-            <Button
-              type="submit"
-              label="Simpan Pengguna"
-              icon="pi pi-user-plus"
-              class="w-full"
-              :loading="createLoading"
-            />
+            <div class="form-field">
+              <label for="create-site">Lokasi/Site</label>
+              <Dropdown
+                id="create-site"
+                v-model="createForm.site"
+                :options="siteOptions"
+                optionLabel="label"
+                optionValue="value"
+                class="w-full"
+                :disabled="createForm.role === 'admin'"
+              />
+            </div>
+            <div class="form-actions">
+              <Button
+                type="submit"
+                label="Simpan Pengguna"
+                icon="pi pi-user-plus"
+                class="primary-btn"
+                :loading="createLoading"
+              />
+            </div>
           </form>
         </template>
       </Card>
@@ -281,13 +353,14 @@ onMounted(() => {
                   <th>Nama</th>
                   <th>Email</th>
                   <th>Peran</th>
+                  <th>Site</th>
                   <th>Dibuat</th>
                   <th class="actions-col">Aksi</th>
                 </tr>
               </thead>
               <tbody v-if="listLoading">
                 <tr>
-                  <td colspan="5">
+                  <td colspan="6">
                     <Skeleton height="2rem" class="mb-2" />
                     <Skeleton height="2rem" class="mb-2" />
                   </td>
@@ -295,7 +368,7 @@ onMounted(() => {
               </tbody>
               <tbody v-else-if="users.length === 0">
                 <tr>
-                  <td colspan="5" class="empty-state">
+                  <td colspan="6" class="empty-state">
                     Belum ada pengguna lain.
                   </td>
                 </tr>
@@ -317,6 +390,7 @@ onMounted(() => {
                       {{ user.role }}
                     </span>
                   </td>
+                  <td>{{ user.site || 'ALL' }}</td>
                   <td>{{ formatDate(user.createdAt) }}</td>
                   <td class="actions-col">
                     <Button
@@ -385,6 +459,18 @@ onMounted(() => {
             optionLabel="label"
             optionValue="value"
             class="w-full"
+          />
+        </div>
+        <div>
+          <label for="edit-site">Lokasi/Site</label>
+          <Dropdown
+            id="edit-site"
+            v-model="editForm.site"
+            :options="siteOptions"
+            optionLabel="label"
+            optionValue="value"
+            class="w-full"
+            :disabled="editForm.role === 'admin'"
           />
         </div>
         <div class="dialog-actions">
@@ -486,6 +572,28 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
+}
+
+.primary-btn {
+  width: 100%;
+  max-width: 220px;
+  height: 42px;
+  padding: 0 1.25rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (min-width: 768px) {
+  .primary-btn {
+    width: auto;
+  }
+}
+
+.form-actions {
+  display: flex;
+  align-items: flex-end;
 }
 
 :deep(.p-password),

@@ -145,10 +145,22 @@ export class UsersService implements OnModuleInit {
     await this.ensureUniqueUsername(createUserDto.username);
     const role = await this.getRoleOrFail(createUserDto.role);
 
+    const site =
+      createUserDto.role === 'operasional'
+        ? createUserDto.site
+        : createUserDto.site ?? 'ALL';
+
+    if (createUserDto.role === 'operasional' && (!site || site === 'ALL')) {
+      throw new BadRequestException(
+        'User operasional harus terikat lokasi spesifik',
+      );
+    }
+
     const newUser = this.usersRepository.create({
       username: createUserDto.username,
       email: createUserDto.email,
       password: createUserDto.password,
+      site: site ?? 'ALL',
       role,
     });
 
@@ -180,6 +192,19 @@ export class UsersService implements OnModuleInit {
 
     if (updateUserDto.role) {
       user.role = await this.getRoleOrFail(updateUserDto.role);
+    }
+
+    if (typeof updateUserDto.site !== 'undefined') {
+      user.site = updateUserDto.site;
+    }
+
+    if (
+      user.role?.name === 'operasional' &&
+      (!user.site || user.site === 'ALL')
+    ) {
+      throw new BadRequestException(
+        'User operasional harus terikat lokasi spesifik',
+      );
     }
 
     if (updateUserDto.password) {
@@ -225,6 +250,7 @@ export class UsersService implements OnModuleInit {
       id: user.id,
       username: user.username,
       email: user.email,
+      site: user.site,
       role: user.role?.name,
       createdAt: user.createdAt,
     };
