@@ -28,9 +28,8 @@ export class StockController {
   constructor(private readonly stockService: StockService) {}
 
   @Get('summary')
-  getSummary() {
-    // Tidak berubah
-    return this.stockService.getSummary();
+  getSummary(@Query('site') site?: string, @Request() req?) {
+    return this.stockService.getSummary(req?.user, site);
   }
 
   @Post('in')
@@ -65,12 +64,12 @@ export class StockController {
   }
 
   @Get('trend')
-  getTrend(@Query() trendQueryDto: StockTrendQueryDto) {
-    return this.stockService.getDailyStockTrend(trendQueryDto);
+  getTrend(@Query() trendQueryDto: StockTrendQueryDto, @Request() req?) {
+    return this.stockService.getDailyStockTrend(trendQueryDto, req?.user);
   }
 
   @Get('trend/in-out')
-  getInOutTrend(@Query() trendQueryDto: StockTrendQueryDto) {
-    return this.stockService.getDailyInOutTrend(trendQueryDto);
+  getInOutTrend(@Query() trendQueryDto: StockTrendQueryDto, @Request() req?) {
+    return this.stockService.getDailyInOutTrend(trendQueryDto, req?.user);
   }
 }

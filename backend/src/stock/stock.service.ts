@@ -39,7 +39,7 @@ export class StockService {
    * Endpoint 1: Mengambil 3 data untuk kartu di Beranda.
    * Ini adalah query paling kompleks, kita pakai QueryBuilder.
    */
-  async getSummary(user?: AuthenticatedUser) {
+  async getSummary(user?: AuthenticatedUser, category?: string) {
     // Kita butuh 3 query:
     // 1. currentStock: (SUM SEMUA 'IN') - (SUM SEMUA 'OUT')
     // 2. todayUsage: (SUM 'OUT' HARI INI)
@@ -99,8 +99,11 @@ export class StockService {
       queryBuilder.setParameter('tz', this.reportTimezone);
     }
 
-    if (user?.role === 'operasional') {
-      queryBuilder.andWhere('tx.category = :site', { site: user.site });
+    const categoryFilter =
+      user?.role === 'operasional' ? user.site : category;
+
+    if (categoryFilter) {
+      queryBuilder.andWhere('tx.category = :site', { site: categoryFilter });
     }
 
     const summary = await queryBuilder.getRawOne(); // .getRawOne() karena ini adalah query agregat
@@ -275,11 +278,14 @@ export class StockService {
     };
   }
 
-  async getDailyStockTrend(trendQueryDto: StockTrendQueryDto): Promise<StockTrendResponseDto> {
+  async getDailyStockTrend(
+    trendQueryDto: StockTrendQueryDto,
+    user?: AuthenticatedUser,
+  ): Promise<StockTrendResponseDto> {
     const { window, rangeStart, rangeEndExclusive, todayStart } =
       this.getWindowParams(trendQueryDto);
 
-    const totalBeforeRow = await this.transactionRepository
+    const totalBeforeQb = this.transactionRepository
       .createQueryBuilder('tx')
       .select(
         "COALESCE(SUM(CASE WHEN tx.type = 'IN' THEN tx.amount ELSE -tx.amount END), 0)",
@@ -287,18 +293,32 @@ export class StockService {
       )
       .where('tx.timestamp < :rangeStart', {
         rangeStart: rangeStart.toISOString(),
-      })
-      .getRawOne();
+      });
+
+    const categoryFilter =
+      user?.role === 'operasional' ? user.site : trendQueryDto.site;
+
+    if (categoryFilter) {
+      totalBeforeQb.andWhere('tx.category = :site', { site: categoryFilter });
+    }
+
+    const totalBeforeRow = await totalBeforeQb.getRawOne();
 
     const startingStock = parseFloat(totalBeforeRow?.total) || 0;
 
-    const transactions = await this.transactionRepository
+    const transactionsQb = this.transactionRepository
       .createQueryBuilder('tx')
       .select(['tx.timestamp', 'tx.type', 'tx.amount'])
       .where('tx.timestamp >= :rangeStart AND tx.timestamp < :rangeEnd', {
         rangeStart: rangeStart.toISOString(),
         rangeEnd: rangeEndExclusive.toISOString(),
-      })
+      });
+
+    if (categoryFilter) {
+      transactionsQb.andWhere('tx.category = :site', { site: categoryFilter });
+    }
+
+    const transactions = await transactionsQb
       .orderBy('tx.timestamp', 'ASC')
       .getMany();
 
@@ -352,17 +372,27 @@ export class StockService {
 
   async getDailyInOutTrend(
     trendQueryDto: StockTrendQueryDto,
+    user?: AuthenticatedUser,
   ): Promise<DailyInOutTrendDto> {
     const { window, rangeStart, rangeEndExclusive } =
       this.getWindowParams(trendQueryDto);
 
-    const transactions = await this.transactionRepository
+    const transactionsQb = this.transactionRepository
       .createQueryBuilder('tx')
       .select(['tx.timestamp', 'tx.type', 'tx.amount'])
       .where('tx.timestamp >= :rangeStart AND tx.timestamp < :rangeEnd', {
         rangeStart: rangeStart.toISOString(),
         rangeEnd: rangeEndExclusive.toISOString(),
-      })
+      });
+
+    const categoryFilter =
+      user?.role === 'operasional' ? user.site : trendQueryDto.site;
+
+    if (categoryFilter) {
+      transactionsQb.andWhere('tx.category = :site', { site: categoryFilter });
+    }
+
+    const transactions = await transactionsQb
       .orderBy('tx.timestamp', 'ASC')
       .getMany();
 

@@ -1,6 +1,6 @@
 // /backend/src/stock/dto/trend-query.dto.ts
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class StockTrendQueryDto {
@@ -16,4 +16,12 @@ export class StockTrendQueryDto {
   @Min(1)
   @Max(30)
   days?: number = 7;
+
+  @ApiPropertyOptional({
+    description: 'Filter site/kategori stok',
+    enum: ['LANTEBUNG', 'JENEPONTO'],
+  })
+  @IsOptional()
+  @IsIn(['LANTEBUNG', 'JENEPONTO'])
+  site?: string;
 }

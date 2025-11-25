@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth.store';
-import { useStockStore } from '@/stores/stock.store';
+import { useStockStore, type SiteKey } from '@/stores/stock.store';
 import apiClient from '@/services/api';
 
 import InputNumber from 'primevue/inputnumber';
@@ -16,6 +16,10 @@ import TransactionHistory from '@/components/TransactionHistory.vue';
 const authStore = useAuthStore();
 const stockStore = useStockStore();
 const toast = useToast();
+const siteKey = computed<SiteKey>(() => {
+  const raw = (authStore.user?.site as string | undefined)?.toUpperCase();
+  return raw === 'JENEPONTO' ? 'JENEPONTO' : 'LANTEBUNG';
+});
 
 // State untuk form
 const date = ref(new Date()); // Default hari ini
@@ -34,8 +38,14 @@ const formatLiters = (value?: number | null) => {
   })} L`;
 };
 
-const currentStock = computed(() => stockStore.summary?.currentStock ?? null);
-const stockUpdatedAt = computed(() => stockStore.summary ? new Date().toLocaleTimeString('id-ID') : null);
+const currentStock = computed(
+  () => stockStore.siteSummaries[siteKey.value]?.currentStock ?? null,
+);
+const stockUpdatedAt = computed(() =>
+  stockStore.siteSummaries[siteKey.value]
+    ? new Date().toLocaleTimeString('id-ID')
+    : null,
+);
 const stockStatusClass = computed(() => {
   const value = currentStock.value ?? 0;
   if (value <= 0) return 'text-red-500';
@@ -48,6 +58,11 @@ const userMeta = computed(() => [
     label: 'Hak Akses',
     value: authStore.user?.role?.toUpperCase() || 'OPERASIONAL',
     icon: 'pi pi-briefcase'
+  },
+  {
+    label: 'Lokasi',
+    value: siteKey.value,
+    icon: 'pi pi-map-marker',
   },
   {
     label: 'Petugas',
@@ -66,8 +81,17 @@ const userMeta = computed(() => [
 ]);
 
 onMounted(() => {
-  stockStore.fetchSummary();
+  stockStore.fetchSummaryBySite(siteKey.value);
 });
+
+watch(
+  () => siteKey.value,
+  (next, prev) => {
+    if (next !== prev) {
+      stockStore.fetchSummaryBySite(next);
+    }
+  },
+);
 
 const handleSubmit = async () => {
   if (!amount.value || amount.value <= 0) {
@@ -117,7 +141,7 @@ const handleSubmit = async () => {
       life: 3000,
     });
 
-    stockStore.refreshAfterTransaction();
+    stockStore.fetchSummaryBySite(siteKey.value);
     usageHistoryRef.value?.refresh();
 
     // Reset form

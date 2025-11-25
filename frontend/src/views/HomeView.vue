@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useStockStore } from '@/stores/stock.store';
+import { useStockStore, type SiteKey } from '@/stores/stock.store';
 import Card from 'primevue/card';
 import Skeleton from 'primevue/skeleton';
 import Message from 'primevue/message';
@@ -10,26 +10,27 @@ import type { ChartData, ChartOptions } from 'chart.js';
 
 const stockStore = useStockStore();
 const {
-  summary,
-  loading,
-  error,
-  trend,
-  trendLoading,
-  trendError,
-  inOutTrend,
-  inOutTrendLoading,
-  inOutTrendError,
+  siteSummaries,
+  siteSummaryLoading,
+  siteSummaryError,
+  siteTrends,
+  siteTrendLoading,
+  siteTrendError,
+  siteInOutTrends,
+  siteInOutTrendLoading,
+  siteInOutTrendError,
 } = storeToRefs(stockStore);
 
 onMounted(() => {
-  stockStore.fetchSummary();
-  stockStore.fetchTrend(7);
-  stockStore.fetchInOutTrend(7);
-  stockStore.startPolling();
+  stockStore.fetchSummaryBySite('LANTEBUNG');
+  stockStore.fetchSummaryBySite('JENEPONTO');
+  stockStore.fetchTrendBySite('LANTEBUNG', 7);
+  stockStore.fetchTrendBySite('JENEPONTO', 7);
+  stockStore.fetchInOutTrendBySite('LANTEBUNG', 7);
+  stockStore.fetchInOutTrendBySite('JENEPONTO', 7);
 });
 
 onUnmounted(() => {
-  stockStore.stopPolling();
 });
 
 const formatLiters = (value?: number | null) => {
@@ -40,57 +41,42 @@ const formatLiters = (value?: number | null) => {
   })} Liter`;
 };
 
-const summaryCards = computed(() => {
-  const data = summary.value;
-  return [
-    {
-      key: 'opening',
-      title: 'Stok Awal Hari Ini',
-      accent: 'text-gray-700',
-      value: data?.todayInitialStock ?? null,
-    },
-    {
-      key: 'in',
-      title: 'Input Hari Ini',
-      accent: 'text-green-600',
-      value: data?.todayStockIn ?? null,
-    },
-    {
-      key: 'out',
-      title: 'Output Hari Ini',
-      accent: 'text-orange-600',
-      value: data?.todayStockOut ?? data?.todayUsage ?? null,
-    },
-    {
-      key: 'closing',
-      title: 'Stok Akhir Hari Ini',
-      accent: 'text-blue-600',
-      value: data?.todayClosingStock ?? data?.currentStock ?? null,
-    },
-  ];
-});
+const siteKeys: SiteKey[] = ['LANTEBUNG', 'JENEPONTO'];
 
-const trendChartData = computed<ChartData<'line'> | null>(() => {
-  if (!trend.value?.points?.length) return null;
-  return {
-    labels: trend.value.points.map((point) => point.label),
-    datasets: [
-      {
-        label: 'Stok Akhir',
-        data: trend.value.points.map((point) => point.closingStock),
-        tension: 0.35,
-        fill: true,
-        borderColor: '#1e468c',
-        backgroundColor: 'rgba(30, 70, 140, 0.15)',
-        pointRadius: 3,
-        pointBackgroundColor: '#1e468c',
-        pointBorderColor: '#ffffff',
-        borderWidth: 2,
-        type: 'line' as const,
-      },
-    ],
-  };
-});
+const siteSummaryCards = computed(() =>
+  siteKeys.map((site) => {
+    const data = siteSummaries.value[site];
+    return {
+      site,
+      cards: [
+        {
+          key: `${site}-opening`,
+          title: 'Stok Awal Hari Ini',
+          accent: 'text-gray-700',
+          value: data?.todayInitialStock ?? null,
+        },
+        {
+          key: `${site}-in`,
+          title: 'Input Hari Ini',
+          accent: 'text-green-600',
+          value: data?.todayStockIn ?? null,
+        },
+        {
+          key: `${site}-out`,
+          title: 'Output Hari Ini',
+          accent: 'text-orange-600',
+          value: data?.todayStockOut ?? data?.todayUsage ?? null,
+        },
+        {
+          key: `${site}-closing`,
+          title: 'Stok Akhir Hari Ini',
+          accent: 'text-blue-600',
+          value: data?.todayClosingStock ?? data?.currentStock ?? null,
+        },
+      ],
+    };
+  }),
+);
 
 const trendChartOptions = computed<ChartOptions<'line'>>(() => ({
   responsive: true,
@@ -123,31 +109,35 @@ const trendChartOptions = computed<ChartOptions<'line'>>(() => ({
     },
   },
 }));
-const inOutChartData = computed<ChartData<'bar'> | null>(() => {
-  if (!inOutTrend.value?.points?.length) return null;
+
+const siteTrendChartData = computed(() => {
+  const build = (site: SiteKey) => {
+    const siteTrend = siteTrends.value[site];
+    if (!siteTrend?.points?.length) return null;
+    return {
+      labels: siteTrend.points.map((point) => point.label),
+      datasets: [
+        {
+          label: 'Stok Akhir',
+          data: siteTrend.points.map((point) => point.closingStock),
+          tension: 0.35,
+          fill: true,
+          borderColor: '#1e468c',
+          backgroundColor: 'rgba(30, 70, 140, 0.15)',
+          pointRadius: 3,
+          pointBackgroundColor: '#1e468c',
+          pointBorderColor: '#ffffff',
+          borderWidth: 2,
+          type: 'line' as const,
+        },
+      ],
+    } as ChartData<'line'>;
+  };
   return {
-    labels: inOutTrend.value.points.map((point) => point.label),
-    datasets: [
-      {
-        type: 'bar' as const,
-        label: 'Penambahan (IN)',
-        data: inOutTrend.value.points.map((point) => point.totalIn),
-        backgroundColor: 'rgba(34, 197, 94, 0.7)',
-        borderColor: 'rgba(22, 163, 74, 1)',
-        borderWidth: 1,
-      },
-      {
-        type: 'bar' as const,
-        label: 'Pemakaian (OUT)',
-        data: inOutTrend.value.points.map((point) => point.totalOut),
-        backgroundColor: 'rgba(249, 115, 22, 0.7)',
-        borderColor: 'rgba(234, 88, 12, 1)',
-        borderWidth: 1,
-      },
-    ],
+    LANTEBUNG: build('LANTEBUNG'),
+    JENEPONTO: build('JENEPONTO'),
   };
 });
-
 const inOutChartOptions = computed<ChartOptions<'bar'>>(() => ({
   responsive: true,
   maintainAspectRatio: false,
@@ -178,94 +168,128 @@ const inOutChartOptions = computed<ChartOptions<'bar'>>(() => ({
     },
   },
 }));
+
+const siteInOutChartData = computed(() => {
+  const build = (site: SiteKey) => {
+    const siteTrendData = siteInOutTrends.value[site];
+    if (!siteTrendData?.points?.length) return null;
+    return {
+      labels: siteTrendData.points.map((point) => point.label),
+      datasets: [
+        {
+          type: 'bar' as const,
+          label: 'Penambahan (IN)',
+          data: siteTrendData.points.map((point) => point.totalIn),
+          backgroundColor: 'rgba(34, 197, 94, 0.7)',
+          borderColor: 'rgba(22, 163, 74, 1)',
+          borderWidth: 1,
+        },
+        {
+          type: 'bar' as const,
+          label: 'Pemakaian (OUT)',
+          data: siteTrendData.points.map((point) => point.totalOut),
+          backgroundColor: 'rgba(249, 115, 22, 0.7)',
+          borderColor: 'rgba(234, 88, 12, 1)',
+          borderWidth: 1,
+        },
+      ],
+    } as ChartData<'bar'>;
+  };
+  return {
+    LANTEBUNG: build('LANTEBUNG'),
+    JENEPONTO: build('JENEPONTO'),
+  };
+});
 </script>
 
 <template>
-  <div class="p-4">
-    <div class="grid summary-grid">
-      <div
-        v-for="metric in summaryCards"
-        :key="metric.key"
-        class="col-12 sm:col-6 lg:col-3"
-      >
-        <Card>
-          <template #title>{{ metric.title }}</template>
-          <template #content>
-            <div v-if="loading">
-              <Skeleton height="2rem" class="mb-2" />
-            </div>
-            <div v-else-if="summary">
-              <h2 class="text-3xl font-bold" :class="metric.accent">
-                {{ formatLiters(metric.value) }}
-              </h2>
-            </div>
-            <div v-else>
-              <small class="text-color-secondary">Belum ada data stok.</small>
-            </div>
-          </template>
-        </Card>
-      </div>
-    </div>
-
-    <div v-if="error" class="col-12 mt-4">
-      <Message severity="error">{{ error }}</Message>
-      </div>
-
-    <div class="grid mt-4">
-      <div class="col-12">
-        <Card>
-          <template #title>Tren Stok 7 Hari Terakhir</template>
-          <template #content>
-            <div v-if="trendLoading">
-              <Skeleton height="260px" />
-            </div>
-            <div v-else-if="trendError">
-              <Message severity="warn">{{ trendError }}</Message>
-            </div>
-            <div v-else-if="trendChartData">
-              <div class="trend-chart-wrapper">
-                <BaseChart
-                  type="line"
-                  :data="trendChartData"
-                  :options="trendChartOptions"
-                />
+  <div class="home-shell">
+    <div
+      v-for="siteBlock in siteSummaryCards"
+      :key="siteBlock.site"
+      class="site-section"
+    >
+      <h3 class="site-title">Site {{ siteBlock.site }}</h3>
+      <div class="grid summary-grid">
+        <div
+          v-for="metric in siteBlock.cards"
+          :key="metric.key"
+          class="col-12 sm:col-6 lg:col-3"
+        >
+          <Card>
+            <template #title>{{ metric.title }}</template>
+            <template #content>
+              <div v-if="siteSummaryLoading[siteBlock.site]">
+                <Skeleton height="2rem" class="mb-2" />
               </div>
-            </div>
-            <div v-else>
-              <small class="text-color-secondary">
-                Belum ada data tren untuk ditampilkan.
-              </small>
-            </div>
-          </template>
-        </Card>
+              <div v-else-if="siteSummaries[siteBlock.site]">
+                <h2 class="text-3xl font-bold" :class="metric.accent">
+                  {{ formatLiters(metric.value) }}
+                </h2>
+              </div>
+              <div v-else-if="siteSummaryError[siteBlock.site]">
+                <Message severity="warn">{{ siteSummaryError[siteBlock.site] }}</Message>
+              </div>
+              <div v-else>
+                <small class="text-color-secondary">Belum ada data stok.</small>
+              </div>
+            </template>
+          </Card>
+        </div>
       </div>
 
-      <div class="col-12">
-        <Card>
-          <template #title>Perbandingan Penambahan vs Pemakaian (7 Hari)</template>
-          <template #content>
-            <div v-if="inOutTrendLoading">
-              <Skeleton height="260px" />
-            </div>
-            <div v-else-if="inOutTrendError">
-              <Message severity="warn">{{ inOutTrendError }}</Message>
-            </div>
-            <div v-else-if="inOutChartData">
-              <div class="trend-chart-wrapper">
-                <BaseChart
-                  type="bar"
-                  :data="inOutChartData"
-                  :options="inOutChartOptions"
-                />
+      <div class="grid mt-3">
+        <div class="col-12 lg:col-6">
+          <Card>
+            <template #title>Tren Stok 7 Hari ({{ siteBlock.site }})</template>
+            <template #content>
+              <div v-if="siteTrendLoading[siteBlock.site]">
+                <Skeleton height="260px" />
               </div>
-            </div>
-            <div v-else>
-              <small class="text-color-secondary">
-                Belum ada data perbandingan untuk ditampilkan.
-              </small>
-            </div>
-          </template>
-        </Card>
+              <div v-else-if="siteTrendError[siteBlock.site]">
+                <Message severity="warn">{{ siteTrendError[siteBlock.site] }}</Message>
+              </div>
+              <div v-else-if="siteTrendChartData[siteBlock.site]">
+                <div class="trend-chart-wrapper">
+                  <BaseChart
+                    type="line"
+                    :data="siteTrendChartData[siteBlock.site]"
+                    :options="trendChartOptions"
+                  />
+                </div>
+              </div>
+              <div v-else>
+                <small class="text-color-secondary">Belum ada data tren.</small>
+              </div>
+            </template>
+          </Card>
+        </div>
+
+        <div class="col-12 lg:col-6">
+          <Card>
+            <template #title>IN vs OUT ({{ siteBlock.site }})</template>
+            <template #content>
+              <div v-if="siteInOutTrendLoading[siteBlock.site]">
+                <Skeleton height="260px" />
+              </div>
+              <div v-else-if="siteInOutTrendError[siteBlock.site]">
+                <Message severity="warn">{{ siteInOutTrendError[siteBlock.site] }}</Message>
+              </div>
+              <div v-else-if="siteInOutChartData[siteBlock.site]">
+                <div class="trend-chart-wrapper">
+                  <BaseChart
+                    type="bar"
+                    :data="siteInOutChartData[siteBlock.site]"
+                    :options="inOutChartOptions"
+                  />
+                </div>
+              </div>
+              <div v-else>
+                <small class="text-color-secondary">Belum ada data in/out.</small>
+              </div>
+            </template>
+          </Card>
+        </div>
       </div>
     </div>
   </div>
@@ -285,5 +309,19 @@ h2 {
 .trend-chart-wrapper {
   width: 100%;
   height: 260px;
+}
+
+.site-title {
+  margin: 0 0 0.5rem 0;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.home-shell {
+  padding: 1.5rem 1rem 2.5rem;
+}
+
+.site-section {
+  margin-top: 1.5rem;
 }
 </style>
