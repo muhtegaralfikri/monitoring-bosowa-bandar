@@ -1,0 +1,396 @@
+/* /frontend/src/style.css */
+
+/* 1. Impor font Sora dari Google Fonts (Ini sudah benar) */
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;700&display=swap');
+
+/* 2. Atur ulang 'body' agar tidak gelap dan tidak ketengah */
+body {
+  font-family: 'Sora', sans-serif;
+  margin: 0;
+  padding: 0;
+  
+  /* Gunakan variabel dari PrimeVUE untuk warna. 
+    '--surface-ground' adalah warna abu-abu muda yang pas.
+    Ini akan jadi background halaman kita.
+  */
+  background-color: var(--surface-ground, #f8f9fa); 
+  
+  color: var(--text-color); /* Warna teks default (gelap) */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 3. Atur ulang '#app' agar tidak ketengah */
+#app {
+  /* Hapus semua style 'max-width', 'margin: auto', dan 'padding' bawaan */
+  min-height: 100vh;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.user-greeting {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 1rem clamp(1rem, 3vw, 2rem) 0;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.app-footer {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #fff;
+  padding: 1rem;
+  background: #1e468c;
+}
+
+/* Layout utilitas bersama untuk halaman form */
+.page-shell {
+  min-height: calc(100vh - 65px);
+  padding: clamp(1.5rem, 3vw, 3rem) 1rem 3rem;
+  display: flex;
+  justify-content: center;
+}
+
+.form-shell {
+  width: min(780px, 100%);
+}
+
+.dashboard-card {
+  border-radius: 1.25rem;
+  box-shadow: 0 25px 45px -40px rgba(15, 23, 42, 0.55);
+}
+
+.dashboard-card :deep(.p-card-body) {
+  padding: clamp(2rem, 3vw, 3rem);
+}
+
+.dashboard-subtitle {
+  color: var(--surface-600);
+  margin: 0.5rem 0 1.5rem;
+}
+
+.meta-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.meta-tile {
+  flex: 1 1 170px;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.75);
+  padding: 1rem;
+}
+
+.meta-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--surface-500);
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.meta-value {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--surface-900);
+}
+
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.form-stack label {
+  font-weight: 600;
+  color: var(--surface-700);
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+/* ==========================================================================
+  GLOBAL NAVBAR OVERRIDE (Jaring Pengaman)
+========================================================================== */
+
+/* Target Menubar HANYA di dalam .navbar-shell */
+.navbar-shell .p-menubar.nav-menu {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  width: auto;
+  flex: 0 0 auto;
+}
+
+/* Target Link di dalam menubar (desktop/tablet) */
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menuitem-link,
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menubar-item-link {
+  background: transparent !important;
+  border-radius: 0;
+  transition: color 0.2s;
+  box-shadow: none !important;
+  position: relative;
+}
+
+/* Target Teks di dalam link (desktop/tablet) */
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menuitem-link
+  .p-menuitem-text,
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menubar-item-link
+  .p-menubar-item-label {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+/* Target Ikon di dalam link (desktop/tablet) */
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menuitem-link
+  .p-menuitem-icon,
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menubar-item-link
+  .p-menubar-item-icon {
+  color: #ffffff !important;
+}
+
+/* --- HOVER STATE (desktop/tablet) --- */
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menuitem-link::after,
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menubar-item-link::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0.2rem;
+  width: 0;
+  height: 2px;
+  background: #ffffff;
+  transition: width 0.2s ease, left 0.2s ease, opacity 0.2s ease;
+  opacity: 0;
+}
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menuitem-link:hover,
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menubar-item-link:hover {
+  background: transparent !important;
+}
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menuitem-link:hover::after,
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menubar-item-link:hover::after {
+  width: 70%;
+  left: 15%;
+  opacity: 1;
+}
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menuitem-link:hover
+  .p-menuitem-text,
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menubar-item-link:hover
+  .p-menubar-item-label {
+  color: #ffffff !important;
+}
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menubar-item-link:hover
+  .p-menubar-item-icon,
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menuitem-link:hover
+  .p-menubar-item-icon {
+  color: #ffffff !important;
+}
+
+/* Matikan efek 'tetap aktif' (desktop/tablet) */
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menubar-item.p-focus
+  > .p-menubar-item-content
+  > .p-menubar-item-link,
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menubar-item-link:focus,
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menubar-item-link:focus-visible,
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menuitem-link:focus,
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menuitem-link:focus-visible {
+  background: transparent !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+/* Tombol hamburger (mobile) */
+.navbar-shell .p-menubar.nav-menu .p-menubar-button {
+  color: #ffffff !important;
+}
+.navbar-shell .p-menubar.nav-menu .p-menubar-button:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Mobile dropdown menu */
+.navbar-shell .p-menubar.nav-menu.p-menubar-mobile-active {
+  position: relative;
+}
+
+.navbar-shell
+  .p-menubar.nav-menu.p-menubar-mobile-active
+  .p-menubar-root-list {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  left: auto;
+  width: min(200px, calc(100vw - 2rem));
+  background: #1e468c;
+  border-radius: 0.85rem;
+  box-shadow: 0 20px 45px -30px rgba(15, 23, 42, 0.85);
+  padding: 0.4rem 0;
+  z-index: 2000;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transform: none;
+  align-items: center;
+  pointer-events: none;
+}
+
+.navbar-shell
+  .p-menubar.nav-menu.p-menubar-mobile-active
+  .p-menubar-root-list
+  .p-menubar-item-link {
+  color: #ffffff !important;
+  background: transparent !important;
+  padding: 0.65rem 1.1rem;
+  border-radius: 0;
+  box-shadow: none !important;
+  font-weight: 600;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  pointer-events: auto;
+  position: relative;
+}
+
+.navbar-shell
+  .p-menubar.nav-menu.p-menubar-mobile-active
+  .p-menubar-root-list
+  .p-menubar-item-link
+  .p-menuitem-text {
+  color: #ffffff !important;
+  text-align: center;
+  display: block;
+  width: 100%;
+}
+
+.navbar-shell
+  .p-menubar.nav-menu.p-menubar-mobile-active
+  .p-menubar-root-list
+  .p-menubar-item-link
+  .p-menuitem-icon {
+  color: #ffffff !important;
+}
+
+.navbar-shell
+  .p-menubar.nav-menu.p-menubar-mobile-active
+  .p-menubar-root-list
+  .p-menubar-item-link:hover {
+  background: transparent !important;
+  color: #ffffff !important;
+}
+
+.navbar-shell
+  .p-menubar.nav-menu.p-menubar-mobile-active
+  .p-menubar-root-list
+  .p-menubar-item-link:hover
+  .p-menuitem-text,
+.navbar-shell
+  .p-menubar.nav-menu.p-menubar-mobile-active
+  .p-menubar-root-list
+  .p-menubar-item-link:hover
+  .p-menuitem-icon {
+  color: #ffffff !important;
+}
+
+.navbar-shell
+  .p-menubar.nav-menu.p-menubar-mobile-active
+  .p-menubar-root-list
+  .p-menubar-item-link::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0.35rem;
+  width: 0;
+  height: 2px;
+  background: #ffffff;
+  transition: width 0.2s ease, left 0.2s ease, opacity 0.2s ease;
+  opacity: 0;
+}
+
+.navbar-shell
+  .p-menubar.nav-menu.p-menubar-mobile-active
+  .p-menubar-root-list
+  .p-menubar-item-link:hover::after {
+  width: 70%;
+  left: 15%;
+  opacity: 1;
+}
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menubar-item-content,
+.navbar-shell
+  .p-menubar.nav-menu:not(.p-menubar-mobile-active)
+  .p-menubar-item-content:hover {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.navbar-shell
+  .p-menubar.nav-menu.p-menubar-mobile-active
+  .p-menubar-item-content,
+.navbar-shell
+  .p-menubar.nav-menu.p-menubar-mobile-active
+  .p-menubar-item-content:hover {
+  background: transparent !important;
+  box-shadow: none !important;
+}
