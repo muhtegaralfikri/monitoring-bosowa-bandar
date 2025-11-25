@@ -1,5 +1,9 @@
 // /backend/src/stock/stock.service.ts
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DeepPartial } from 'typeorm';
@@ -15,6 +19,7 @@ interface AuthenticatedUser {
   id: string;
   username: string;
   role: string;
+  site?: string | null;
 }
 
 @Injectable()
@@ -34,7 +39,7 @@ export class StockService {
    * Endpoint 1: Mengambil 3 data untuk kartu di Beranda.
    * Ini adalah query paling kompleks, kita pakai QueryBuilder.
    */
-  async getSummary() {
+  async getSummary(user?: AuthenticatedUser) {
     // Kita butuh 3 query:
     // 1. currentStock: (SUM SEMUA 'IN') - (SUM SEMUA 'OUT')
     // 2. todayUsage: (SUM 'OUT' HARI INI)
@@ -94,6 +99,10 @@ export class StockService {
       queryBuilder.setParameter('tz', this.reportTimezone);
     }
 
+    if (user?.role === 'operasional') {
+      queryBuilder.andWhere('tx.category = :site', { site: user.site });
+    }
+
     const summary = await queryBuilder.getRawOne(); // .getRawOne() karena ini adalah query agregat
 
     // getRawOne() mengembalikan string. Kita ubah ke number (float).
@@ -130,6 +139,7 @@ export class StockService {
       type: 'IN',
       amount: createStockInDto.amount,
       description: createStockInDto.description,
+      category: createStockInDto.category,
       user: { id: user.id }, // Relasi ke user yang menginput
     });
 
@@ -143,11 +153,9 @@ export class StockService {
     createStockOutDto: CreateStockOutDto,
     user: AuthenticatedUser,
   ) {
-    // Business Logic Kritis: Cek ketersediaan stok
-    const { currentStock } = await this.getSummary();
-    if (currentStock < createStockOutDto.amount) {
-      throw new BadRequestException(
-        `Stok tidak mencukupi. Sisa stok: ${currentStock} liter.`,
+    if (!user?.site || user.site === 'ALL') {
+      throw new ForbiddenException(
+        'User operasional harus terikat lokasi spesifik',
       );
     }
 
@@ -163,10 +171,18 @@ export class StockService {
       }
     }
 
+    const { currentStock } = await this.getSummary(user);
+    if (currentStock < createStockOutDto.amount) {
+      throw new BadRequestException(
+        `Stok tidak mencukupi. Sisa stok: ${currentStock} liter.`,
+      );
+    }
+
     const transactionPayload: DeepPartial<TransactionEntity> = {
       type: 'OUT',
       amount: createStockOutDto.amount,
       description: createStockOutDto.description,
+      category: user.site,
       user: { id: user.id }, // Relasi ke user yang menginput
     };
 

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsIn, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateUserDto {
   @ApiProperty({ description: 'Nama pengguna yang tampil di aplikasi' })
@@ -20,4 +20,14 @@ export class CreateUserDto {
   @IsString()
   @IsIn(['admin', 'operasional'])
   role: 'admin' | 'operasional';
+
+  @ApiProperty({
+    description: 'Lokasi/site user (wajib untuk operasional)',
+    enum: ['ALL', 'LANTEBUNG', 'JENEPONTO'],
+    default: 'ALL',
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['ALL', 'LANTEBUNG', 'JENEPONTO'])
+  site?: string;
 }

@@ -25,6 +25,9 @@ export class UserEntity {
   @Column()
   password: string;
 
+  @Column({ length: 50, nullable: true, default: 'ALL' })
+  site: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
