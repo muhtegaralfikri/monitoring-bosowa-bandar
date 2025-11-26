@@ -37,12 +37,6 @@ onBeforeUnmount(() => {
     <Toast />
     <Navbar />
     <main class="app-main">
-      <div
-        v-if="authStore.isAuthenticated && authStore.user"
-        class="user-greeting"
-      >
-        Halo, <strong>{{ authStore.user.username }}</strong>
-      </div>
       <RouterView />
     </main>
     <footer class="app-footer">

@@ -6,6 +6,7 @@ import apiClient from '@/services/api';
 
 import InputNumber from 'primevue/inputnumber';
 import Textarea from 'primevue/textarea';
+import Dropdown from 'primevue/dropdown';
 import Button from 'primevue/button';
 import Card from 'primevue/card';
 import Divider from 'primevue/divider';
@@ -19,8 +20,14 @@ const toast = useToast();
 // State untuk form
 const amount = ref<number | null>(null);
 const description = ref('');
+const site = ref<'LANTEBUNG' | 'JENEPONTO'>('LANTEBUNG');
 const loading = ref(false);
 const stockHistoryRef = ref<InstanceType<typeof TransactionHistory> | null>(null);
+
+const siteOptions = [
+  { label: 'Lantebung', value: 'LANTEBUNG' },
+  { label: 'Jeneponto', value: 'JENEPONTO' },
+];
 
 const userMeta = computed(() => [
   {
@@ -56,6 +63,7 @@ const handleSubmit = async () => {
     await apiClient.post('/stock/in', {
       amount: amount.value,
       description: description.value,
+      category: site.value,
     });
 
     // Berhasil!
@@ -134,6 +142,18 @@ const handleSubmit = async () => {
                 rows="3"
                 autoResize
                 placeholder="Contoh: Pembelian premium 5 KL dari Pertamina"
+                class="w-full"
+              />
+            </div>
+
+            <div>
+              <label for="site">Lokasi/Site</label>
+              <Dropdown
+                id="site"
+                v-model="site"
+                :options="siteOptions"
+                optionLabel="label"
+                optionValue="value"
                 class="w-full"
               />
             </div>

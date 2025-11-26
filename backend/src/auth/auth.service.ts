@@ -138,6 +138,7 @@ export class AuthService {
       username: user.username,
       sub: user.id,
       role: user.role.name,
+      site: user.site,
     };
     return this.jwtService.sign(payload);
   }
@@ -169,6 +170,7 @@ export class AuthService {
       username: user.username,
       email: user.email,
       role: user.role?.name,
+      site: user.site,
     };
   }
 

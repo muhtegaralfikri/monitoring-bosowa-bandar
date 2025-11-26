@@ -3,6 +3,7 @@ export interface AuthenticatedUserDto {
   username: string;
   email: string;
   role: string;
+  site?: string | null;
 }
 
 export interface AuthSessionDto {
