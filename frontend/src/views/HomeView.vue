@@ -43,6 +43,11 @@ const formatLiters = (value?: number | null) => {
 
 const siteKeys: SiteKey[] = ['LANTEBUNG', 'JENEPONTO'];
 
+const siteDisplayNames: Record<SiteKey, string> = {
+  LANTEBUNG: 'Genset',
+  JENEPONTO: 'Tug Assist',
+};
+
 const siteSummaryCards = computed(() =>
   siteKeys.map((site) => {
     const data = siteSummaries.value[site];
@@ -246,7 +251,7 @@ const siteInOutChartData = computed(() => {
       <div class="grid mt-3">
         <div class="col-12 lg:col-6">
           <Card>
-            <template #title>Tren Stok 7 Hari ({{ siteBlock.site }})</template>
+            <template #title>Tren Stok 7 Hari - {{ siteDisplayNames[siteBlock.site] }}</template>
             <template #content>
               <div v-if="siteTrendLoading[siteBlock.site]">
                 <Skeleton height="260px" />
@@ -272,7 +277,7 @@ const siteInOutChartData = computed(() => {
 
         <div class="col-12 lg:col-6">
           <Card>
-            <template #title>IN vs OUT ({{ siteBlock.site }})</template>
+            <template #title>IN vs OUT - {{ siteDisplayNames[siteBlock.site] }}</template>
             <template #content>
               <div v-if="siteInOutTrendLoading[siteBlock.site]">
                 <Skeleton height="260px" />

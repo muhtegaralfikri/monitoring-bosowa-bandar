@@ -7,6 +7,7 @@ import apiClient from '@/services/api';
 import InputNumber from 'primevue/inputnumber';
 import Textarea from 'primevue/textarea';
 import Dropdown from 'primevue/dropdown';
+import DatePicker from 'primevue/datepicker';
 import Button from 'primevue/button';
 import Card from 'primevue/card';
 import Divider from 'primevue/divider';
@@ -21,6 +22,7 @@ const toast = useToast();
 const amount = ref<number | null>(null);
 const description = ref('');
 const site = ref<'LANTEBUNG' | 'JENEPONTO'>('LANTEBUNG');
+const date = ref<Date | null>(null);
 const loading = ref(false);
 const stockHistoryRef = ref<InstanceType<typeof TransactionHistory> | null>(null);
 
@@ -28,6 +30,14 @@ const siteOptions = [
   { label: 'Lantebung', value: 'LANTEBUNG' },
   { label: 'Jeneponto', value: 'JENEPONTO' },
 ];
+
+const todayPlaceholder = computed(() =>
+  new Intl.DateTimeFormat('id-ID', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(new Date()),
+);
 
 const userMeta = computed(() => [
   {
@@ -64,6 +74,7 @@ const handleSubmit = async () => {
       amount: amount.value,
       description: description.value,
       category: site.value,
+      timestamp: date.value ? date.value.toISOString() : undefined,
     });
 
     // Berhasil!
@@ -80,6 +91,7 @@ const handleSubmit = async () => {
     // Reset form
     amount.value = null;
     description.value = '';
+    date.value = null;
   } catch (error: any) {
     toast.add({
       severity: 'error',
@@ -123,6 +135,19 @@ const handleSubmit = async () => {
           <Divider />
 
           <form @submit.prevent="handleSubmit" class="form-stack">
+            <div>
+              <label for="date">Tanggal Transaksi</label>
+              <DatePicker
+                id="date"
+                v-model="date"
+                showIcon
+                showButtonBar
+                dateFormat="dd/mm/yy"
+                :placeholder="todayPlaceholder"
+                class="w-full"
+              />
+            </div>
+
             <div>
               <label for="amount">Jumlah (Liter)</label>
               <InputNumber

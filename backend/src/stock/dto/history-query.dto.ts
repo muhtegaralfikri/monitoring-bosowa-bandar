@@ -6,11 +6,11 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 export class StockHistoryQueryDto extends PaginationDto {
   @ApiPropertyOptional({
     description: "Filter jenis transaksi. 'IN' untuk tambah stok, 'OUT' untuk pemakaian.",
-    enum: ['IN', 'OUT'],
+    enum: ['IN', 'OUT', 'ALL'],
   })
   @IsOptional()
-  @IsIn(['IN', 'OUT'])
-  type?: 'IN' | 'OUT';
+  @IsIn(['IN', 'OUT', 'ALL'])
+  type?: 'IN' | 'OUT' | 'ALL';
 
   @ApiPropertyOptional({
     description: 'Tanggal awal rentang filter (ISO string)',
@@ -41,4 +41,12 @@ export class StockHistoryQueryDto extends PaginationDto {
   })
   @IsOptional()
   q?: string;
+
+  @ApiPropertyOptional({
+    description: 'Filter berdasarkan lokasi/site stok',
+    enum: ['LANTEBUNG', 'JENEPONTO', 'ALL'],
+  })
+  @IsOptional()
+  @IsIn(['LANTEBUNG', 'JENEPONTO', 'ALL'])
+  site?: string;
 }

@@ -138,12 +138,23 @@ export class StockService {
       throw new BadRequestException('Jumlah harus lebih dari 0');
     }
 
+    let stockTimestamp: Date | undefined;
+    if (createStockInDto.timestamp) {
+      stockTimestamp = new Date(createStockInDto.timestamp);
+      if (Number.isNaN(stockTimestamp.getTime())) {
+        throw new BadRequestException('Tanggal penambahan stok tidak valid.');
+      }
+    } else {
+      stockTimestamp = this.getNowInReportTimezone();
+    }
+
     const newTransaction = this.transactionRepository.create({
       type: 'IN',
       amount: createStockInDto.amount,
       description: createStockInDto.description,
       category: createStockInDto.category,
       user: { id: user.id }, // Relasi ke user yang menginput
+      timestamp: stockTimestamp,
     });
 
     return this.transactionRepository.save(newTransaction);
@@ -172,6 +183,8 @@ export class StockService {
       if (Number.isNaN(usageTimestamp.getTime())) {
         throw new BadRequestException('Tanggal pemakaian tidak valid.');
       }
+    } else {
+      usageTimestamp = this.getNowInReportTimezone();
     }
 
     const { currentStock } = await this.getSummary(user);
@@ -204,10 +217,38 @@ export class StockService {
     historyQueryDto: StockHistoryQueryDto,
     user: AuthenticatedUser,
   ) {
-    const { page = 1, limit = 10, type, startDate, endDate, userId, q } = historyQueryDto;
+    const {
+      page = 1,
+      limit = 10,
+      type,
+      startDate,
+      endDate,
+      userId,
+      q,
+      site,
+    } = historyQueryDto;
     const skip = (page - 1) * limit; // Kalkulasi 'offset'
 
-    const enforcedType = user.role === 'operasional' ? 'OUT' : type;
+    const enforcedType =
+      user.role === 'operasional'
+        ? type === 'ALL'
+          ? undefined
+          : 'OUT'
+        : type === 'ALL'
+          ? undefined
+          : type;
+    const categoryFilter =
+      user.role === 'operasional'
+        ? user.site
+        : site && site !== 'ALL'
+          ? site
+          : null;
+
+    if (user.role === 'operasional' && (!user.site || user.site === 'ALL')) {
+      throw new ForbiddenException(
+        'User operasional harus terikat lokasi spesifik',
+      );
+    }
 
     const qb = this.transactionRepository
       .createQueryBuilder('tx')
@@ -218,6 +259,10 @@ export class StockService {
 
     if (enforcedType) {
       qb.andWhere('tx.type = :type', { type: enforcedType });
+    }
+
+    if (categoryFilter) {
+      qb.andWhere('tx.category = :site', { site: categoryFilter });
     }
 
     if (userId && user.role === 'admin') {
@@ -252,6 +297,27 @@ export class StockService {
 
     const [transactions, total] = await qb.getManyAndCount();
 
+    let openingBalanceBeforeRange = 0;
+    if (transactions.length > 0) {
+      const earliest = transactions[transactions.length - 1].timestamp;
+      const balanceQb = this.transactionRepository
+        .createQueryBuilder('tx')
+        .select(
+          "COALESCE(SUM(CASE WHEN tx.type = 'IN' THEN tx.amount ELSE -tx.amount END), 0)",
+          'total',
+        )
+        .where('tx.timestamp < :earliest', {
+          earliest: earliest.toISOString(),
+        });
+
+      if (categoryFilter) {
+        balanceQb.andWhere('tx.category = :site', { site: categoryFilter });
+      }
+
+      const balanceRow = await balanceQb.getRawOne();
+      openingBalanceBeforeRange = parseFloat(balanceRow?.total) || 0;
+    }
+
     // Kita format sedikit datanya agar tidak mengekspos password user
     const formattedData = transactions.map((tx) => ({
       id: tx.id,
@@ -268,6 +334,8 @@ export class StockService {
 
     return {
       data: formattedData,
+      openingBalanceBeforeRange,
+      category: categoryFilter ?? null,
       meta: {
         totalItems: total,
         itemCount: transactions.length,
@@ -471,5 +539,16 @@ export class StockService {
     const clone = new Date(date);
     clone.setUTCDate(clone.getUTCDate() + amount);
     return clone;
+  }
+
+  // Ambil waktu "sekarang" berdasarkan APP_TIMEZONE untuk hindari selisih server timezone.
+  private getNowInReportTimezone() {
+    const now = new Date();
+    // toLocaleString dengan timeZone lalu parse kembali agar bergeser sesuai zona yang diinginkan.
+    return new Date(
+      now.toLocaleString('en-US', {
+        timeZone: this.reportTimezone,
+      }),
+    );
   }
 }
