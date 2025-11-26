@@ -227,6 +227,19 @@ h2 {
   color: var(--surface-700);
 }
 
+.form-field :deep(.p-inputtext),
+.form-field :deep(.p-password-input) {
+  width: 100%;
+  height: 48px;
+  font-size: 1rem;
+  padding: 0 0.75rem;
+}
+
+.auth-card :deep(.p-button) {
+  height: 48px;
+  font-weight: 700;
+}
+
 .help-text {
   display: flex;
   align-items: center;
@@ -236,7 +249,37 @@ h2 {
 
 @media (max-width: 768px) {
   .auth-page__inner {
-    padding: 2rem;
+    padding: 1.25rem;
+  }
+
+  .auth-page__hero {
+    gap: 0.75rem;
+  }
+
+  .hero-stats {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  }
+}
+
+@media (max-width: 540px) {
+  .auth-page {
+    padding: 1.25rem 0.75rem;
+  }
+
+  :deep(.auth-card .p-card-body) {
+    padding: 1.75rem;
+  }
+
+  h1 {
+    font-size: 1.85rem;
+  }
+
+  .hero-stats {
+    display: none;
+  }
+
+  .form-grid {
+    gap: 0.85rem;
   }
 }
 </style>
