@@ -18,7 +18,7 @@ const stockStore = useStockStore();
 const toast = useToast();
 const siteKey = computed<SiteKey>(() => {
   const raw = (authStore.user?.site as string | undefined)?.toUpperCase();
-  return raw === 'JENEPONTO' ? 'JENEPONTO' : 'LANTEBUNG';
+  return raw === 'TUG_ASSIST' ? 'TUG_ASSIST' : 'GENSET';
 });
 
 // State untuk form
@@ -60,8 +60,8 @@ const userMeta = computed(() => [
     icon: 'pi pi-briefcase'
   },
   {
-    label: 'Lokasi',
-    value: siteKey.value,
+    label: 'Monitoring',
+    value: siteKey.value === 'GENSET' ? 'Genset' : 'Tug Assist',
     icon: 'pi pi-map-marker',
   },
   {

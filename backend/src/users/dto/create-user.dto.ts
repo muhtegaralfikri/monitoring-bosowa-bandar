@@ -22,12 +22,12 @@ export class CreateUserDto {
   role: 'admin' | 'operasional';
 
   @ApiProperty({
-    description: 'Lokasi/site user (wajib untuk operasional)',
-    enum: ['ALL', 'LANTEBUNG', 'JENEPONTO'],
+    description: 'Monitoring user (wajib untuk operasional)',
+    enum: ['ALL', 'GENSET', 'TUG_ASSIST'],
     default: 'ALL',
   })
   @IsOptional()
   @IsString()
-  @IsIn(['ALL', 'LANTEBUNG', 'JENEPONTO'])
+  @IsIn(['ALL', 'GENSET', 'TUG_ASSIST'])
   site?: string;
 }

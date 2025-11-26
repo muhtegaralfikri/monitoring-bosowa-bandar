@@ -18,10 +18,10 @@ export class StockTrendQueryDto {
   days?: number = 7;
 
   @ApiPropertyOptional({
-    description: 'Filter site/kategori stok',
-    enum: ['LANTEBUNG', 'JENEPONTO'],
+    description: 'Filter monitoring/kategori stok',
+    enum: ['GENSET', 'TUG_ASSIST'],
   })
   @IsOptional()
-  @IsIn(['LANTEBUNG', 'JENEPONTO'])
+  @IsIn(['GENSET', 'TUG_ASSIST'])
   site?: string;
 }

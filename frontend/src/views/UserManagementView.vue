@@ -32,16 +32,23 @@ const roleOptions = [
 ];
 const siteOptions = [
   { label: 'Semua (ALL)', value: 'ALL' },
-  { label: 'Lantebung', value: 'LANTEBUNG' },
-  { label: 'Jeneponto', value: 'JENEPONTO' },
+  { label: 'Genset', value: 'GENSET' },
+  { label: 'Tug Assist', value: 'TUG_ASSIST' },
 ];
+
+const siteDisplay = (site?: string | null) => {
+  if (!site || site === 'ALL') return 'ALL';
+  if (site === 'GENSET') return 'Genset';
+  if (site === 'TUG_ASSIST') return 'Tug Assist';
+  return site;
+};
 
 const createForm = reactive({
   username: '',
   email: '',
   password: '',
   role: 'admin' as 'admin' | 'operasional',
-  site: 'ALL' as 'ALL' | 'LANTEBUNG' | 'JENEPONTO',
+  site: 'ALL' as 'ALL' | 'GENSET' | 'TUG_ASSIST',
 });
 const createLoading = ref(false);
 
@@ -52,7 +59,7 @@ const editForm = reactive({
   email: '',
   password: '',
   role: 'operasional' as 'admin' | 'operasional',
-  site: 'ALL' as 'ALL' | 'LANTEBUNG' | 'JENEPONTO',
+  site: 'ALL' as 'ALL' | 'GENSET' | 'TUG_ASSIST',
 });
 const editLoading = ref(false);
 
@@ -103,8 +110,8 @@ const handleCreate = async () => {
   ) {
     toast.add({
       severity: 'warn',
-      summary: 'Site belum dipilih',
-      detail: 'Operasional harus terikat ke LANTEBUNG atau JENEPONTO.',
+      summary: 'Monitoring belum dipilih',
+      detail: 'Operasional harus terikat ke Genset atau Tug Assist.',
       life: 3000,
     });
     return;
@@ -165,8 +172,8 @@ const handleEdit = async () => {
   ) {
     toast.add({
       severity: 'warn',
-      summary: 'Site belum dipilih',
-      detail: 'Operasional harus terikat ke LANTEBUNG atau JENEPONTO.',
+      summary: 'Monitoring belum dipilih',
+      detail: 'Operasional harus terikat ke Genset atau Tug Assist.',
       life: 3000,
     });
     return;
@@ -240,7 +247,7 @@ watch(
     if (role === 'admin') {
       createForm.site = 'ALL';
     } else if (createForm.site === 'ALL') {
-      createForm.site = 'LANTEBUNG';
+      createForm.site = 'GENSET';
     }
   },
 );
@@ -251,7 +258,7 @@ watch(
     if (role === 'admin') {
       editForm.site = 'ALL';
     } else if (editForm.site === 'ALL') {
-      editForm.site = 'LANTEBUNG';
+      editForm.site = 'GENSET';
     }
   },
 );
@@ -311,7 +318,7 @@ watch(
               />
             </div>
             <div class="form-field">
-              <label for="create-site">Lokasi/Site</label>
+              <label for="create-site">Monitoring</label>
               <Dropdown
                 id="create-site"
                 v-model="createForm.site"
@@ -353,7 +360,7 @@ watch(
                   <th>Nama</th>
                   <th>Email</th>
                   <th>Peran</th>
-                  <th>Site</th>
+                  <th>Monitoring</th>
                   <th>Dibuat</th>
                   <th class="actions-col">Aksi</th>
                 </tr>
@@ -390,7 +397,7 @@ watch(
                       {{ user.role }}
                     </span>
                   </td>
-                  <td>{{ user.site || 'ALL' }}</td>
+                  <td>{{ siteDisplay(user.site) }}</td>
                   <td>{{ formatDate(user.createdAt) }}</td>
                   <td class="actions-col">
                     <Button
@@ -462,12 +469,12 @@ watch(
           />
         </div>
         <div>
-          <label for="edit-site">Lokasi/Site</label>
-          <Dropdown
-            id="edit-site"
-            v-model="editForm.site"
-            :options="siteOptions"
-            optionLabel="label"
+          <label for="edit-site">Monitoring</label>
+            <Dropdown
+              id="edit-site"
+              v-model="editForm.site"
+              :options="siteOptions"
+              optionLabel="label"
             optionValue="value"
             class="w-full"
             :disabled="editForm.role === 'admin'"

@@ -10,6 +10,6 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
 
   @IsOptional()
   @IsString()
-  @IsIn(['ALL', 'LANTEBUNG', 'JENEPONTO'])
+  @IsIn(['ALL', 'GENSET', 'TUG_ASSIST'])
   site?: string;
 }

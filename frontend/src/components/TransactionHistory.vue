@@ -397,10 +397,10 @@ const exportToExcel = async () => {
 
   const stockSummary = summary.value;
   const siteLabel =
-    operationalSite.value === 'LANTEBUNG'
-      ? 'Lantebung'
-      : operationalSite.value === 'JENEPONTO'
-        ? 'Jeneponto'
+    operationalSite.value === 'GENSET'
+      ? 'Genset'
+      : operationalSite.value === 'TUG_ASSIST'
+        ? 'Tug Assist'
         : null;
   const rows: (string | number)[][] = [];
   const titleRow =
@@ -415,7 +415,7 @@ const exportToExcel = async () => {
   rows.push([periodDescription]);
   rows.push([`Diekspor: ${exportTime}`]);
   if (siteLabel) {
-    rows.push([`Lokasi: ${siteLabel}`]);
+    rows.push([`Monitoring: ${siteLabel}`]);
   }
   rows.push([]);
   const headerRow = exportUsageOnly

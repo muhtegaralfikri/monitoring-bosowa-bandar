@@ -21,14 +21,14 @@ const toast = useToast();
 // State untuk form
 const amount = ref<number | null>(null);
 const description = ref('');
-const site = ref<'LANTEBUNG' | 'JENEPONTO'>('LANTEBUNG');
+const site = ref<'GENSET' | 'TUG_ASSIST'>('GENSET');
 const date = ref<Date | null>(null);
 const loading = ref(false);
 const stockHistoryRef = ref<InstanceType<typeof TransactionHistory> | null>(null);
 
 const siteOptions = [
-  { label: 'Lantebung', value: 'LANTEBUNG' },
-  { label: 'Jeneponto', value: 'JENEPONTO' },
+  { label: 'Genset', value: 'GENSET' },
+  { label: 'Tug Assist', value: 'TUG_ASSIST' },
 ];
 
 const todayPlaceholder = computed(() =>
@@ -172,7 +172,7 @@ const handleSubmit = async () => {
             </div>
 
             <div>
-              <label for="site">Lokasi/Site</label>
+              <label for="site">Monitoring</label>
               <Dropdown
                 id="site"
                 v-model="site"

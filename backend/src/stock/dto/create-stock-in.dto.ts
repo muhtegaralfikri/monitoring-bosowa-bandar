@@ -29,13 +29,13 @@ export class CreateStockInDto {
   description: string;
 
   @ApiProperty({
-    description: 'Site asal stok',
-    enum: ['LANTEBUNG', 'JENEPONTO'],
-    example: 'LANTEBUNG',
+    description: 'Monitoring asal stok',
+    enum: ['GENSET', 'TUG_ASSIST'],
+    example: 'GENSET',
   })
   @IsString()
   @IsNotEmpty()
-  @IsIn(['LANTEBUNG', 'JENEPONTO'])
+  @IsIn(['GENSET', 'TUG_ASSIST'])
   category: string;
 
   @ApiProperty({

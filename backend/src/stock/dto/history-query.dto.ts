@@ -43,10 +43,10 @@ export class StockHistoryQueryDto extends PaginationDto {
   q?: string;
 
   @ApiPropertyOptional({
-    description: 'Filter berdasarkan lokasi/site stok',
-    enum: ['LANTEBUNG', 'JENEPONTO', 'ALL'],
+    description: 'Filter berdasarkan monitoring stok',
+    enum: ['GENSET', 'TUG_ASSIST', 'ALL'],
   })
   @IsOptional()
-  @IsIn(['LANTEBUNG', 'JENEPONTO', 'ALL'])
+  @IsIn(['GENSET', 'TUG_ASSIST', 'ALL'])
   site?: string;
 }
