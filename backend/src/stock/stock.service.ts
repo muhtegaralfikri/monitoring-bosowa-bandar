@@ -326,11 +326,13 @@ export class StockService {
       amount: Number(tx.amount),
       description: tx.description,
       category: tx.category,
-      user: {
-        id: tx.user.id,
-        username: tx.user.username,
-        email: tx.user.email,
-      },
+      user: tx.user
+        ? {
+            id: tx.user.id,
+            username: tx.user.username,
+            email: tx.user.email,
+          }
+        : null,
     }));
 
     return {

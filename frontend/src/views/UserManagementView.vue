@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, onMounted, watch } from 'vue';
+import { reactive, ref, onMounted, watch, computed } from 'vue';
 import Card from 'primevue/card';
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
@@ -30,17 +30,31 @@ const roleOptions = [
   { label: 'Admin', value: 'admin' },
   { label: 'Operasional', value: 'operasional' },
 ];
-const siteOptions = [
+const siteOptionsAdmin = [
   { label: 'Semua (ALL)', value: 'ALL' },
   { label: 'Genset', value: 'GENSET' },
   { label: 'Tug Assist', value: 'TUG_ASSIST' },
 ];
+const siteOptionsOperational = [
+  { label: 'Genset', value: 'GENSET' },
+  { label: 'Tug Assist', value: 'TUG_ASSIST' },
+];
+const createSiteOptions = computed(() =>
+  createForm.role === 'admin' ? siteOptionsAdmin : siteOptionsOperational,
+);
+const editSiteOptions = computed(() =>
+  editForm.role === 'admin' ? siteOptionsAdmin : siteOptionsOperational,
+);
 
 const siteDisplay = (site?: string | null) => {
   if (!site || site === 'ALL') return 'ALL';
   if (site === 'GENSET') return 'Genset';
   if (site === 'TUG_ASSIST') return 'Tug Assist';
   return site;
+};
+
+const normalizeOperationalSite = (site: string | null | undefined) => {
+  return site === 'GENSET' || site === 'TUG_ASSIST' ? site : 'GENSET';
 };
 
 const createForm = reactive({
@@ -151,7 +165,10 @@ const openEdit = (user: UserItem) => {
   editForm.email = user.email;
   editForm.role = (user.role as 'admin' | 'operasional') ?? 'operasional';
   editForm.password = '';
-  editForm.site = (user.site as any) ?? 'ALL';
+  editForm.site =
+    editForm.role === 'operasional'
+      ? normalizeOperationalSite(user.site)
+      : (user.site as any) ?? 'ALL';
   editDialogVisible.value = true;
 };
 
@@ -247,7 +264,9 @@ watch(
     if (role === 'admin') {
       createForm.site = 'ALL';
     } else if (createForm.site === 'ALL') {
-      createForm.site = 'GENSET';
+      createForm.site = normalizeOperationalSite(createForm.site);
+    } else {
+      createForm.site = normalizeOperationalSite(createForm.site);
     }
   },
 );
@@ -258,7 +277,9 @@ watch(
     if (role === 'admin') {
       editForm.site = 'ALL';
     } else if (editForm.site === 'ALL') {
-      editForm.site = 'GENSET';
+      editForm.site = normalizeOperationalSite(editForm.site);
+    } else {
+      editForm.site = normalizeOperationalSite(editForm.site);
     }
   },
 );
@@ -322,7 +343,7 @@ watch(
               <Select
                 id="create-site"
                 v-model="createForm.site"
-                :options="siteOptions"
+                :options="createSiteOptions"
                 optionLabel="label"
                 optionValue="value"
                 class="w-full"
@@ -473,7 +494,7 @@ watch(
             <Select
               id="edit-site"
               v-model="editForm.site"
-              :options="siteOptions"
+              :options="editSiteOptions"
               optionLabel="label"
             optionValue="value"
             class="w-full"

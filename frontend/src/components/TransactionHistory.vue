@@ -23,7 +23,7 @@ interface TransactionHistoryItem {
   amount: number;
   description: string | null;
   category?: string | null;
-  user: TransactionUser;
+  user: TransactionUser | null;
 }
 
 interface HistoryResponse {
