@@ -29,7 +29,7 @@ export class TransactionEntity {
   category: string;
 
   // Relasi: Banyak Transaksi diinput oleh satu User
-  @ManyToOne(() => UserEntity)
+  @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'user_id' }) // Nama kolom foreign key
-  user: UserEntity;
+  user?: UserEntity;
 }
