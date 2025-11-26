@@ -3,7 +3,7 @@ import { reactive, ref, onMounted, watch } from 'vue';
 import Card from 'primevue/card';
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
-import Dropdown from 'primevue/dropdown';
+import Select from 'primevue/select';
 import Button from 'primevue/button';
 import Message from 'primevue/message';
 import Skeleton from 'primevue/skeleton';
@@ -308,7 +308,7 @@ watch(
             </div>
             <div class="form-field">
               <label for="create-role">Peran</label>
-              <Dropdown
+              <Select
                 id="create-role"
                 v-model="createForm.role"
                 :options="roleOptions"
@@ -319,7 +319,7 @@ watch(
             </div>
             <div class="form-field">
               <label for="create-site">Monitoring</label>
-              <Dropdown
+              <Select
                 id="create-site"
                 v-model="createForm.site"
                 :options="siteOptions"
@@ -459,7 +459,7 @@ watch(
         </div>
         <div>
           <label for="edit-role">Peran</label>
-          <Dropdown
+          <Select
             id="edit-role"
             v-model="editForm.role"
             :options="roleOptions"
@@ -470,7 +470,7 @@ watch(
         </div>
         <div>
           <label for="edit-site">Monitoring</label>
-            <Dropdown
+            <Select
               id="edit-site"
               v-model="editForm.site"
               :options="siteOptions"

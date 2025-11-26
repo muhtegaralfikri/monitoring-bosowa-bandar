@@ -4,9 +4,8 @@ import { storeToRefs } from 'pinia';
 import Card from 'primevue/card';
 import Button from 'primevue/button';
 import DatePicker from 'primevue/datepicker';
-import Dropdown from 'primevue/dropdown';
+import Select from 'primevue/select';
 import InputText from 'primevue/inputtext';
-import * as XLSX from 'xlsx-js-style';
 import apiClient from '@/services/api';
 import { useStockStore } from '@/stores/stock.store';
 import { useAuthStore } from '@/stores/auth.store';
@@ -381,6 +380,7 @@ const displayedPages = computed<PageToken[]>(() => {
 });
 
 const exportToExcel = async () => {
+  const XLSX = await import('xlsx-js-style');
   let exportHistory: TransactionHistoryItem[] = history.value;
   let exportOpeningBalance = historyOpeningBalance.value;
 
@@ -956,7 +956,7 @@ const filterSummary = computed(() => {
             class="filter-field type-filter"
           >
             <label class="filter-label" for="history-type">Jenis</label>
-            <Dropdown
+            <Select
               id="history-type"
               v-model="selectedType"
               :options="typeOptions"
@@ -970,7 +970,7 @@ const filterSummary = computed(() => {
             class="filter-field site-filter"
           >
             <label class="filter-label" for="history-site">Monitoring</label>
-            <Dropdown
+            <Select
               id="history-site"
               v-model="selectedSite"
               :options="siteOptions"
@@ -984,7 +984,7 @@ const filterSummary = computed(() => {
             class="filter-field user-filter"
           >
             <label class="filter-label" for="history-user">Petugas</label>
-            <Dropdown
+            <Select
               id="history-user"
               v-model="selectedUser"
               :options="userOptions"
@@ -1019,7 +1019,7 @@ const filterSummary = computed(() => {
           </div>
           <div class="filter-field quick-range-filter">
             <label class="filter-label" for="history-quick-range">Rentang Cepat</label>
-            <Dropdown
+            <Select
               id="history-quick-range"
               v-model="quickRange"
               :options="quickRangeOptions"
@@ -1031,7 +1031,7 @@ const filterSummary = computed(() => {
           </div>
           <div class="filter-field page-size-filter">
             <label class="filter-label" for="history-page-size">Jumlah/Halaman</label>
-            <Dropdown
+            <Select
               id="history-page-size"
               v-model="selectedPageSize"
               :options="pageSizeOptions"

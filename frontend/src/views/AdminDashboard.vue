@@ -6,7 +6,7 @@ import apiClient from '@/services/api';
 
 import InputNumber from 'primevue/inputnumber';
 import Textarea from 'primevue/textarea';
-import Dropdown from 'primevue/dropdown';
+import Select from 'primevue/select';
 import DatePicker from 'primevue/datepicker';
 import Button from 'primevue/button';
 import Card from 'primevue/card';
@@ -173,7 +173,7 @@ const handleSubmit = async () => {
 
             <div>
               <label for="site">Monitoring</label>
-              <Dropdown
+              <Select
                 id="site"
                 v-model="site"
                 :options="siteOptions"
