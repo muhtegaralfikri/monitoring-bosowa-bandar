@@ -6,9 +6,10 @@ import Button from 'primevue/button';
 import DatePicker from 'primevue/datepicker';
 import Dropdown from 'primevue/dropdown';
 import InputText from 'primevue/inputtext';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import apiClient from '@/services/api';
 import { useStockStore } from '@/stores/stock.store';
+import { useAuthStore } from '@/stores/auth.store';
 
 interface TransactionUser {
   id: string;
@@ -22,11 +23,14 @@ interface TransactionHistoryItem {
   type: 'IN' | 'OUT';
   amount: number;
   description: string | null;
+  category?: string | null;
   user: TransactionUser;
 }
 
 interface HistoryResponse {
   data: TransactionHistoryItem[];
+  openingBalanceBeforeRange?: number;
+  category?: string | null;
   meta: {
     totalItems: number;
     itemCount: number;
@@ -47,6 +51,7 @@ const props = withDefaults(
     timeZone?: string;
     allowTypeFilter?: boolean;
     allowUserFilter?: boolean;
+    allowSiteFilter?: boolean;
   }>(),
   {
     description: '',
@@ -54,6 +59,7 @@ const props = withDefaults(
     timeZone: MAKASSAR_TIME_ZONE,
     allowTypeFilter: false,
     allowUserFilter: false,
+    allowSiteFilter: false,
   },
 );
 
@@ -61,8 +67,11 @@ const props = withDefaults(
 const resolvedTimeZone = computed(() => props.timeZone || MAKASSAR_TIME_ZONE);
 
 const stockStore = useStockStore();
+const authStore = useAuthStore();
 const { summary } = storeToRefs(stockStore);
+const { user, isOperasional } = storeToRefs(authStore);
 const history = ref<TransactionHistoryItem[]>([]);
+const historyOpeningBalance = ref<number>(0);
 const loading = ref(false);
 const errorMessage = ref<string | null>(null);
 const page = ref(1);
@@ -79,18 +88,25 @@ const appliedRange = ref<{ start: Date; end: Date } | null>(null);
 
 type FilterType = 'ALL' | 'IN' | 'OUT';
 const selectedType = ref<FilterType>(props.type);
-
 const typeOptions = [
   { label: 'Penambahan', value: 'IN' as FilterType },
   { label: 'Pemakaian', value: 'OUT' as FilterType },
   { label: 'Semua', value: 'ALL' as FilterType },
 ];
 
+const siteOptions = [
+  { label: 'Semua', value: 'ALL' as const },
+  { label: 'Genset', value: 'GENSET' as const },
+  { label: 'Tug Assist', value: 'TUG_ASSIST' as const },
+];
+const selectedSite = ref<'ALL' | 'GENSET' | 'TUG_ASSIST'>('ALL');
+
 const effectiveType = computed<FilterType>(() =>
   props.allowTypeFilter ? selectedType.value : props.type,
 );
 
 const showTypeColumn = computed(() => props.allowTypeFilter && selectedType.value === 'ALL');
+const showSiteFilter = computed(() => props.allowSiteFilter && !isOperasional.value);
 
 interface UserOption {
   label: string;
@@ -112,6 +128,12 @@ const availableUserOptions = computed(() => {
   return userOptions.value;
 });
 const selectedUser = ref<string | null>(null);
+const operationalSite = computed(() => user.value?.site || null);
+const effectiveSite = computed(() => {
+  if (isOperasional.value) return operationalSite.value;
+  if (!props.allowSiteFilter) return null;
+  return selectedSite.value === 'ALL' ? null : selectedSite.value;
+});
 
 watch(
   () => props.type,
@@ -134,6 +156,13 @@ const formatDate = (value: string | number | Date) =>
     timeZone: resolvedTimeZone.value,
   }).format(new Date(value));
 
+const siteLabel = (value?: string | null) => {
+  if (!value) return '-';
+  if (value === 'GENSET') return 'Genset';
+  if (value === 'TUG_ASSIST') return 'Tug Assist';
+  return value;
+};
+
 const startOfDayIso = (date: Date) => {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -146,32 +175,48 @@ const endOfDayIso = (date: Date) => {
   return d.toISOString();
 };
 
+const buildHistoryParams = (options?: { forExport?: boolean }) => {
+  const params: Record<string, unknown> = {
+    limit: selectedPageSize.value,
+    page: page.value,
+  };
+
+  if (effectiveSite.value) {
+    params.site = effectiveSite.value;
+  }
+
+  const exportAllTypesForOp =
+    options?.forExport && isOperasional.value && effectiveType.value === 'OUT';
+
+  if (effectiveType.value !== 'ALL' && !exportAllTypesForOp) {
+    params.type = effectiveType.value;
+  }
+
+  if (appliedRange.value) {
+    params.startDate = startOfDayIso(appliedRange.value.start);
+    params.endDate = endOfDayIso(appliedRange.value.end);
+  }
+
+  if (props.allowUserFilter && selectedUser.value) {
+    params.userId = selectedUser.value;
+  }
+
+  if (searchTerm.value.trim()) {
+    params.q = searchTerm.value.trim();
+  }
+
+  if (exportAllTypesForOp) {
+    params.type = 'ALL';
+  }
+
+  return params;
+};
+
 const fetchHistory = async () => {
   loading.value = true;
   errorMessage.value = null;
   try {
-    const params: Record<string, unknown> = {
-      limit: selectedPageSize.value,
-      page: page.value,
-    };
-
-    if (effectiveType.value !== 'ALL') {
-      params.type = effectiveType.value;
-    }
-
-    if (appliedRange.value) {
-      params.startDate = startOfDayIso(appliedRange.value.start);
-      params.endDate = endOfDayIso(appliedRange.value.end);
-    }
-
-    if (props.allowUserFilter && selectedUser.value) {
-      params.userId = selectedUser.value;
-    }
-
-    if (searchTerm.value.trim()) {
-      params.q = searchTerm.value.trim();
-    }
-
+    const params = buildHistoryParams();
     const { data } = await apiClient.get<HistoryResponse>('/stock/history', {
       params,
     });
@@ -179,6 +224,7 @@ const fetchHistory = async () => {
       ...item,
       amount: Number(item.amount),
     }));
+    historyOpeningBalance.value = Number(data?.openingBalanceBeforeRange ?? 0);
     if (data?.meta) {
       paginationMeta.value = data.meta;
       page.value = data.meta.currentPage;
@@ -334,8 +380,28 @@ const displayedPages = computed<PageToken[]>(() => {
   return result;
 });
 
-const exportToExcel = () => {
-  if (!history.value.length) {
+const exportToExcel = async () => {
+  let exportHistory: TransactionHistoryItem[] = history.value;
+  let exportOpeningBalance = historyOpeningBalance.value;
+
+  try {
+    const { data } = await apiClient.get<HistoryResponse>('/stock/history', {
+      params: buildHistoryParams({ forExport: true }),
+    });
+
+    exportHistory = (data?.data || []).map((item) => ({
+      ...item,
+      amount: Number(item.amount),
+    }));
+    exportOpeningBalance = Number(data?.openingBalanceBeforeRange ?? 0);
+  } catch (error) {
+    console.error('Failed to fetch full history for export', error);
+    if (!exportHistory.length) {
+      return;
+    }
+  }
+
+  if (!exportHistory.length) {
     return;
   }
 
@@ -346,11 +412,20 @@ const exportToExcel = () => {
     timeZone: resolvedTimeZone.value,
   }).format(now);
 
+  const exportUsageOnly = isOperasional.value && effectiveType.value === 'OUT';
+  const showMonitoringColumn = !effectiveSite.value;
+
   const periodDescription = appliedRange.value
     ? `Periode: ${activeRangeLabel.value}`
     : 'Periode: Semua data';
 
   const stockSummary = summary.value;
+  const monitoringHeaderLabel =
+    operationalSite.value === 'GENSET'
+      ? 'Genset'
+      : operationalSite.value === 'TUG_ASSIST'
+        ? 'Tug Assist'
+        : null;
   const rows: (string | number)[][] = [];
   const titleRow =
     props.title ||
@@ -363,45 +438,309 @@ const exportToExcel = () => {
   rows.push([titleRow]);
   rows.push([periodDescription]);
   rows.push([`Diekspor: ${exportTime}`]);
-  rows.push([]);
-  rows.push(['Ringkasan Stok Harian']);
-  rows.push(['Stok Awal', stockSummary?.todayInitialStock ?? 0]);
-  rows.push(['Input', stockSummary?.todayStockIn ?? 0]);
-  rows.push(['Output', stockSummary?.todayStockOut ?? stockSummary?.todayUsage ?? 0]);
-  rows.push(['Stok Akhir', stockSummary?.todayClosingStock ?? stockSummary?.currentStock ?? 0]);
-  rows.push([]);
-  const headerRow = ['No', 'Tanggal', 'Petugas'];
-  if (effectiveType.value === 'ALL') {
-    headerRow.push('Jenis');
+  if (monitoringHeaderLabel) {
+    rows.push([`Monitoring: ${monitoringHeaderLabel}`]);
   }
-  headerRow.push('Jumlah (L)', 'Keterangan');
+  rows.push([]);
+  const headerRow: string[] = ['No', 'Tanggal'];
+  if (showMonitoringColumn) {
+    headerRow.push('Monitoring');
+  }
+  headerRow.push('Petugas', 'Keterangan');
+  if (exportUsageOnly || effectiveType.value === 'OUT') {
+    headerRow.push('Output');
+  } else {
+    headerRow.push('Stok Awal', 'Input', 'Output', 'Stok Akhir');
+  }
+  const headerRowIndex = rows.length + 1; // 1-based index for XLSX utils
   rows.push(headerRow);
 
-  let totalAmount = 0;
-  history.value.forEach((item, index) => {
+  let totalInput = 0;
+  let totalOutput = 0;
+  const usageDayKeys = new Set<string>();
+  const subtotal = new Map<
+    string,
+    { input: number; output: number; firstStock: number | null; lastStock: number | null }
+  >();
+
+  const sortedHistory = [...exportHistory].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+  );
+
+  let runningStock = Number.isFinite(exportOpeningBalance)
+    ? Number(exportOpeningBalance)
+    : 0;
+  const runningByMonitoring = new Map<string, number>();
+
+  let rowNumber = 1;
+  sortedHistory.forEach((item) => {
     const amount = Number(item.amount) || 0;
-    totalAmount += amount;
-    const columns: (string | number)[] = [
-      index + 1,
-      formatDate(item.timestamp),
-      item.user?.username || '-',
-    ];
-    if (effectiveType.value === 'ALL') {
-      columns.push(item.type === 'IN' ? 'IN' : 'OUT');
+    const input = item.type === 'IN' ? amount : 0;
+    const output = item.type === 'OUT' ? amount : 0;
+    totalInput += input;
+    totalOutput += output;
+    if (item.type === 'OUT') {
+      const dayKey = new Intl.DateTimeFormat('en-CA', {
+        timeZone: resolvedTimeZone.value,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date(item.timestamp));
+      usageDayKeys.add(dayKey);
     }
-    columns.push(amount, item.description || '-');
-    rows.push(columns);
+
+    if (!exportUsageOnly || item.type === 'OUT' || effectiveType.value === 'OUT') {
+      const monitoringValue = showMonitoringColumn
+        ? siteLabel(item.category ?? effectiveSite.value) || '-'
+        : '';
+
+      let startStock: number | null = null;
+      let closingStock: number | null = null;
+
+      if (showMonitoringColumn) {
+        const currentRunning = runningByMonitoring.get(monitoringValue) ?? 0;
+        startStock = currentRunning;
+        closingStock = currentRunning + input - output;
+        runningByMonitoring.set(monitoringValue, closingStock);
+      } else {
+        startStock = runningStock;
+        if (runningStock !== null) {
+          closingStock = runningStock + input - output;
+          runningStock = closingStock;
+        }
+      }
+
+      const bucketKey = monitoringValue || '-';
+      if (!subtotal.has(bucketKey)) {
+        subtotal.set(bucketKey, {
+          input: 0,
+          output: 0,
+          firstStock: startStock ?? null,
+          lastStock: closingStock ?? null,
+        });
+      }
+      const bucket = subtotal.get(bucketKey)!;
+      bucket.input += input;
+      bucket.output += output;
+      if (bucket.firstStock === null) {
+        bucket.firstStock = startStock ?? null;
+      }
+      bucket.lastStock = closingStock ?? bucket.lastStock;
+
+      const baseCells = [
+        rowNumber,
+        formatDate(item.timestamp),
+        ...(showMonitoringColumn ? [monitoringValue] : []),
+        item.user?.username || '-',
+        item.description || '-',
+      ];
+
+      if (exportUsageOnly || effectiveType.value === 'OUT') {
+        rows.push([...baseCells, output]);
+      } else {
+        rows.push([
+          ...baseCells,
+          startStock ?? '',
+          input,
+          output,
+          closingStock ?? '',
+        ]);
+      }
+      rowNumber += 1;
+    }
   });
 
   rows.push([]);
-  const totalRow: (string | number)[] = ['', 'Total', ''];
-  if (effectiveType.value === 'ALL') {
-    totalRow.push('');
+
+  // Subtotal per monitoring (hanya saat kolom monitoring ditampilkan).
+  const keteranganIdx = headerRow.indexOf('Keterangan');
+  const inputIdx = headerRow.indexOf('Input');
+  const outputIdx = headerRow.indexOf('Output');
+  const stokAkhirIdx = headerRow.indexOf('Stok Akhir');
+  if (showMonitoringColumn && subtotal.size > 1) {
+    rows.push([]);
+    rows.push(['', '', 'Subtotal per Monitoring']);
+    subtotal.forEach((bucket, key) => {
+      const subRow = Array(headerRow.length).fill('');
+      const monitoringIdx = headerRow.indexOf('Monitoring');
+      if (monitoringIdx >= 0) subRow[monitoringIdx] = key;
+      subRow[keteranganIdx] = 'Subtotal';
+      if (inputIdx >= 0) subRow[inputIdx] = bucket.input;
+      if (outputIdx >= 0) subRow[outputIdx] = bucket.output;
+      if (stokAkhirIdx >= 0 && bucket.lastStock !== null) subRow[stokAkhirIdx] = bucket.lastStock;
+      rows.push(subRow);
+    });
+    rows.push([]);
   }
-  totalRow.push(totalAmount, '');
+
+  const totalRow = Array(headerRow.length).fill('');
+  totalRow[keteranganIdx] = 'Total';
+  const isUsageView = exportUsageOnly || effectiveType.value === 'OUT';
+  if (isUsageView) {
+    if (outputIdx >= 0) totalRow[outputIdx] = totalOutput;
+  } else {
+    if (inputIdx >= 0) totalRow[inputIdx] = totalInput;
+    if (outputIdx >= 0) totalRow[outputIdx] = totalOutput;
+    if (stokAkhirIdx >= 0) {
+      const combinedClosing = showMonitoringColumn
+        ? Array.from(runningByMonitoring.values()).reduce((sum, v) => sum + (v ?? 0), 0)
+        : runningStock ?? 0;
+      totalRow[stokAkhirIdx] = combinedClosing;
+    }
+  }
   rows.push(totalRow);
 
+  if (exportUsageOnly) {
+    const daysCount = usageDayKeys.size || 1;
+    const avgPerDay = totalOutput / daysCount;
+    const avgRow = Array(headerRow.length).fill('');
+    avgRow[keteranganIdx] = 'Rata-rata/Hari';
+    if (outputIdx >= 0) avgRow[outputIdx] = avgPerDay;
+    rows.push(avgRow);
+  }
+
   const worksheet = XLSX.utils.aoa_to_sheet(rows);
+
+  // Tata letak lebih rapi: lebar kolom, freeze header, autofilter, merge judul.
+  const lastColIndex = headerRow.length - 1;
+  worksheet['!cols'] = [
+    { wch: 6 }, // No
+    { wch: 18 }, // Tanggal
+    { wch: 20 }, // Petugas
+    { wch: 28 }, // Keterangan
+    ...(exportUsageOnly
+      ? [{ wch: 12 }] // Output
+      : [{ wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 12 }]),
+  ];
+
+  worksheet['!freeze'] = { rows: headerRowIndex, cols: 0 };
+  worksheet['!autofilter'] = {
+    ref: XLSX.utils.encode_range({
+      s: { r: headerRowIndex - 1, c: 0 },
+      e: { r: rows.length - 1, c: lastColIndex },
+    }),
+  };
+
+  const merges = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: lastColIndex } }, // title
+    { s: { r: 1, c: 0 }, e: { r: 1, c: lastColIndex } }, // period
+    { s: { r: 2, c: 0 }, e: { r: 2, c: lastColIndex } }, // exported time
+  ];
+  // If site row exists (row index 3), merge it too.
+  const firstCellRow3 = rows[3]?.[0];
+  const hasSiteRow =
+    monitoringHeaderLabel &&
+    titleRow &&
+    typeof firstCellRow3 === 'string' &&
+    firstCellRow3.startsWith('Monitoring:');
+  if (hasSiteRow) {
+    merges.push({ s: { r: 3, c: 0 }, e: { r: 3, c: lastColIndex } });
+  }
+  worksheet['!merges'] = merges;
+
+  // Styling ringkas agar tampak profesional.
+  const applyCellStyle = (
+    cellRef: string,
+    style: Record<string, any>,
+  ) => {
+    const cell = worksheet[cellRef];
+    if (!cell) return;
+    const existing = (cell as any).s ?? {};
+    (cell as any).s = { ...existing, ...style };
+  };
+
+  const applyRowStyle = (
+    rowIndex1Based: number,
+    cols: number[],
+    style: Record<string, any>,
+  ) => {
+    cols.forEach((col) => {
+      const ref = XLSX.utils.encode_cell({ r: rowIndex1Based - 1, c: col });
+      applyCellStyle(ref, style);
+    });
+  };
+
+  // Meta header (title/period/export time/site).
+  const metaRowsCount = hasSiteRow ? 4 : 3;
+  for (let r = 0; r < metaRowsCount; r += 1) {
+    const ref = XLSX.utils.encode_cell({ r, c: 0 });
+    applyCellStyle(ref, {
+      font: { bold: r === 0, sz: r === 0 ? 14 : 11 },
+    });
+  }
+
+  // Header styling.
+  for (let c = 0; c <= lastColIndex; c += 1) {
+    const cellRef = XLSX.utils.encode_cell({ r: headerRowIndex - 1, c });
+    applyCellStyle(cellRef, {
+      font: { bold: true, color: { rgb: 'FFFFFFFF' } },
+      fill: { fgColor: { rgb: 'FF4A5568' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border: {
+        top: { style: 'thin', color: { rgb: 'FFCBD5E0' } },
+        bottom: { style: 'thin', color: { rgb: 'FFCBD5E0' } },
+        left: { style: 'thin', color: { rgb: 'FFCBD5E0' } },
+        right: { style: 'thin', color: { rgb: 'FFCBD5E0' } },
+      },
+    });
+  }
+
+  // Data rows styling (zebra fill).
+  const dataStartRow = headerRowIndex + 1;
+  const dataEndRow = dataStartRow + (rowNumber - 1) - 1;
+  for (let r = dataStartRow; r <= dataEndRow; r += 1) {
+    const isAlt = (r - dataStartRow) % 2 === 1;
+    const rowFill = isAlt ? { fgColor: { rgb: 'FFF7FAFC' } } : undefined;
+    applyRowStyle(
+      r,
+      Array.from({ length: lastColIndex + 1 }, (_, i) => i),
+      {
+        alignment: { vertical: 'center' },
+        ...(rowFill ? { fill: rowFill } : {}),
+      },
+    );
+  }
+
+  // Numbers right aligned tanpa pemisah ribuan dan tanpa desimal.
+  const numericColumns = exportUsageOnly
+    ? [headerRow.indexOf('Output')]
+    : [
+        headerRow.indexOf('Stok Awal'),
+        headerRow.indexOf('Input'),
+        headerRow.indexOf('Output'),
+        headerRow.indexOf('Stok Akhir'),
+      ].filter((idx) => idx >= 0);
+  for (let r = dataStartRow; r <= dataEndRow; r += 1) {
+    numericColumns.forEach((col) => {
+      const ref = XLSX.utils.encode_cell({ r: r - 1, c: col });
+      applyCellStyle(ref, {
+        alignment: { horizontal: 'right' },
+        numFmt: '0;[Red]-0;0',
+      });
+    });
+  }
+
+  // Total & average rows styling.
+  const totalRowIndex = rows.length - (exportUsageOnly ? 2 : 1);
+  applyRowStyle(
+    totalRowIndex + 1,
+    Array.from({ length: lastColIndex + 1 }, (_, i) => i),
+    {
+      font: { bold: true },
+      border: {
+        top: { style: 'thin', color: { rgb: 'FFCBD5E0' } },
+      },
+    },
+  );
+  if (exportUsageOnly) {
+    const avgRowIndex = rows.length - 1;
+    applyRowStyle(avgRowIndex + 1, [lastColIndex - 1, lastColIndex], {
+      font: { italic: true },
+      alignment: { horizontal: 'right' },
+      numFmt: '0;[Red]-0;0',
+    });
+  }
+
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Riwayat');
 
@@ -411,7 +750,10 @@ const exportToExcel = () => {
       : effectiveType.value === 'OUT'
         ? 'pemakaian'
         : 'semua';
-  const filename = `riwayat-${filenameType}-${new Date().toISOString().split('T')[0]}.xlsx`;
+  const siteSlug = effectiveSite.value ? effectiveSite.value.toLowerCase() : null;
+  const filename = `riwayat-${filenameType}${siteSlug ? `-${siteSlug}` : ''}-${new Date()
+    .toISOString()
+    .split('T')[0]}.xlsx`;
 
   XLSX.writeFile(workbook, filename);
 };
@@ -453,6 +795,9 @@ const resetFilters = () => {
   if (props.allowUserFilter) {
     selectedUser.value = null;
   }
+  if (showSiteFilter.value) {
+    selectedSite.value = 'ALL';
+  }
   selectedPageSize.value = props.limit;
   searchTerm.value = '';
   selectedRange.value = null;
@@ -466,6 +811,7 @@ const showResetAll = computed(
   () =>
     props.allowTypeFilter ||
     props.allowUserFilter ||
+    (showSiteFilter.value && selectedSite.value !== 'ALL') ||
     Boolean(appliedRange.value) ||
     selectedPageSize.value !== props.limit ||
     Boolean(searchTerm.value.trim()),
@@ -495,6 +841,16 @@ watch(
   { flush: 'post' },
 );
 
+watch(
+  selectedSite,
+  () => {
+    if (!showSiteFilter.value) return;
+    page.value = 1;
+    fetchHistory();
+  },
+  { flush: 'post' },
+);
+
 const filterSummary = computed(() => {
   const summaries: string[] = [];
   if (props.allowTypeFilter) {
@@ -505,6 +861,15 @@ const filterSummary = computed(() => {
           ? 'Penambahan'
           : 'Pemakaian'
     }`);
+  }
+  if (showSiteFilter.value) {
+    const siteText =
+      selectedSite.value === 'ALL'
+        ? 'Semua'
+        : selectedSite.value === 'GENSET'
+          ? 'Genset'
+          : 'Tug Assist';
+    summaries.push(`Monitoring: ${siteText}`);
   }
   if (props.allowUserFilter && selectedUser.value) {
     const userLabel = userOptions.value.find((opt) => opt.value === selectedUser.value)?.label;
@@ -595,6 +960,20 @@ const filterSummary = computed(() => {
               id="history-type"
               v-model="selectedType"
               :options="typeOptions"
+              optionLabel="label"
+              optionValue="value"
+              class="w-full"
+            />
+          </div>
+          <div
+            v-if="showSiteFilter"
+            class="filter-field site-filter"
+          >
+            <label class="filter-label" for="history-site">Monitoring</label>
+            <Dropdown
+              id="history-site"
+              v-model="selectedSite"
+              :options="siteOptions"
               optionLabel="label"
               optionValue="value"
               class="w-full"

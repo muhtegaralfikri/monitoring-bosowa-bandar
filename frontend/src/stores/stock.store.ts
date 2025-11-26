@@ -43,55 +43,55 @@ export interface StockInOutTrendResponse {
   points: StockInOutPoint[];
 }
 
-export type SiteKey = 'LANTEBUNG' | 'JENEPONTO';
+export type SiteKey = 'GENSET' | 'TUG_ASSIST';
 
 export const useStockStore = defineStore('stock', () => {
   const summary = ref<StockSummary | null>(null);
   const loading = ref(true);
   const error = ref<string | null>(null);
   const siteSummaries = ref<Record<SiteKey, StockSummary | null>>({
-    LANTEBUNG: null,
-    JENEPONTO: null,
+    GENSET: null,
+    TUG_ASSIST: null,
   });
   const siteSummaryLoading = ref<Record<SiteKey, boolean>>({
-    LANTEBUNG: false,
-    JENEPONTO: false,
+    GENSET: false,
+    TUG_ASSIST: false,
   });
   const siteSummaryError = ref<Record<SiteKey, string | null>>({
-    LANTEBUNG: null,
-    JENEPONTO: null,
+    GENSET: null,
+    TUG_ASSIST: null,
   });
   const trend = ref<StockTrendResponse | null>(null);
   const trendLoading = ref(false);
   const trendError = ref<string | null>(null);
   const trendDays = ref(7);
   const siteTrends = ref<Record<SiteKey, StockTrendResponse | null>>({
-    LANTEBUNG: null,
-    JENEPONTO: null,
+    GENSET: null,
+    TUG_ASSIST: null,
   });
   const siteTrendLoading = ref<Record<SiteKey, boolean>>({
-    LANTEBUNG: false,
-    JENEPONTO: false,
+    GENSET: false,
+    TUG_ASSIST: false,
   });
   const siteTrendError = ref<Record<SiteKey, string | null>>({
-    LANTEBUNG: null,
-    JENEPONTO: null,
+    GENSET: null,
+    TUG_ASSIST: null,
   });
   const inOutTrend = ref<StockInOutTrendResponse | null>(null);
   const inOutTrendLoading = ref(false);
   const inOutTrendError = ref<string | null>(null);
   const inOutTrendDays = ref(7);
   const siteInOutTrends = ref<Record<SiteKey, StockInOutTrendResponse | null>>({
-    LANTEBUNG: null,
-    JENEPONTO: null,
+    GENSET: null,
+    TUG_ASSIST: null,
   });
   const siteInOutTrendLoading = ref<Record<SiteKey, boolean>>({
-    LANTEBUNG: false,
-    JENEPONTO: false,
+    GENSET: false,
+    TUG_ASSIST: false,
   });
   const siteInOutTrendError = ref<Record<SiteKey, string | null>>({
-    LANTEBUNG: null,
-    JENEPONTO: null,
+    GENSET: null,
+    TUG_ASSIST: null,
   });
 
   let hasLoadedOnce = false;

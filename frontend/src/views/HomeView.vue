@@ -22,12 +22,12 @@ const {
 } = storeToRefs(stockStore);
 
 onMounted(() => {
-  stockStore.fetchSummaryBySite('LANTEBUNG');
-  stockStore.fetchSummaryBySite('JENEPONTO');
-  stockStore.fetchTrendBySite('LANTEBUNG', 7);
-  stockStore.fetchTrendBySite('JENEPONTO', 7);
-  stockStore.fetchInOutTrendBySite('LANTEBUNG', 7);
-  stockStore.fetchInOutTrendBySite('JENEPONTO', 7);
+  stockStore.fetchSummaryBySite('GENSET');
+  stockStore.fetchSummaryBySite('TUG_ASSIST');
+  stockStore.fetchTrendBySite('GENSET', 7);
+  stockStore.fetchTrendBySite('TUG_ASSIST', 7);
+  stockStore.fetchInOutTrendBySite('GENSET', 7);
+  stockStore.fetchInOutTrendBySite('TUG_ASSIST', 7);
 });
 
 onUnmounted(() => {
@@ -41,13 +41,18 @@ const formatLiters = (value?: number | null) => {
   })} Liter`;
 };
 
-const siteKeys: SiteKey[] = ['LANTEBUNG', 'JENEPONTO'];
+const siteKeys: SiteKey[] = ['GENSET', 'TUG_ASSIST'];
 
-const siteSummaryCards = computed(() =>
+const siteDisplayNames: Record<SiteKey, string> = {
+  GENSET: 'Genset',
+  TUG_ASSIST: 'Tug Assist',
+};
+
+  const siteSummaryCards = computed(() =>
   siteKeys.map((site) => {
     const data = siteSummaries.value[site];
     const title =
-      site === 'LANTEBUNG'
+      site === 'GENSET'
         ? 'Monitoring Solar Genset (Lantebung)'
         : 'Monitoring Solar Tug Assist (Jeneponto)';
     return {
@@ -115,7 +120,7 @@ const trendChartOptions = computed<ChartOptions<'line'>>(() => ({
   },
 }));
 
-const siteTrendChartData = computed(() => {
+  const siteTrendChartData = computed(() => {
   const build = (site: SiteKey) => {
     const siteTrend = siteTrends.value[site];
     if (!siteTrend?.points?.length) return null;
@@ -139,8 +144,8 @@ const siteTrendChartData = computed(() => {
     } as ChartData<'line'>;
   };
   return {
-    LANTEBUNG: build('LANTEBUNG'),
-    JENEPONTO: build('JENEPONTO'),
+    GENSET: build('GENSET'),
+    TUG_ASSIST: build('TUG_ASSIST'),
   };
 });
 const inOutChartOptions = computed<ChartOptions<'bar'>>(() => ({
@@ -174,7 +179,7 @@ const inOutChartOptions = computed<ChartOptions<'bar'>>(() => ({
   },
 }));
 
-const siteInOutChartData = computed(() => {
+  const siteInOutChartData = computed(() => {
   const build = (site: SiteKey) => {
     const siteTrendData = siteInOutTrends.value[site];
     if (!siteTrendData?.points?.length) return null;
@@ -201,8 +206,8 @@ const siteInOutChartData = computed(() => {
     } as ChartData<'bar'>;
   };
   return {
-    LANTEBUNG: build('LANTEBUNG'),
-    JENEPONTO: build('JENEPONTO'),
+    GENSET: build('GENSET'),
+    TUG_ASSIST: build('TUG_ASSIST'),
   };
 });
 </script>
@@ -246,7 +251,7 @@ const siteInOutChartData = computed(() => {
       <div class="grid mt-3">
         <div class="col-12 lg:col-6">
           <Card>
-            <template #title>Tren Stok 7 Hari ({{ siteBlock.site }})</template>
+            <template #title>Tren Stok 7 Hari - {{ siteDisplayNames[siteBlock.site] }}</template>
             <template #content>
               <div v-if="siteTrendLoading[siteBlock.site]">
                 <Skeleton height="260px" />
@@ -272,7 +277,7 @@ const siteInOutChartData = computed(() => {
 
         <div class="col-12 lg:col-6">
           <Card>
-            <template #title>IN vs OUT ({{ siteBlock.site }})</template>
+            <template #title>IN vs OUT - {{ siteDisplayNames[siteBlock.site] }}</template>
             <template #content>
               <div v-if="siteInOutTrendLoading[siteBlock.site]">
                 <Skeleton height="260px" />

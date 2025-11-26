@@ -25,7 +25,7 @@ export class TransactionEntity {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ length: 50, default: 'LANTEBUNG' })
+  @Column({ length: 50, default: 'GENSET' })
   category: string;
 
   // Relasi: Banyak Transaksi diinput oleh satu User

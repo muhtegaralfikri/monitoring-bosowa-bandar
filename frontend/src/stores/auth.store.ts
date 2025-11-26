@@ -10,7 +10,7 @@ interface UserPayload {
   username: string;
   email: string;
   role: 'admin' | 'operasional';
-  site?: 'ALL' | 'LANTEBUNG' | 'JENEPONTO';
+  site?: 'ALL' | 'GENSET' | 'TUG_ASSIST';
 }
 
 interface AuthSessionResponse {
