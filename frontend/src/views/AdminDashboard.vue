@@ -199,6 +199,7 @@ const handleSubmit = async () => {
         type="IN"
         :allow-type-filter="true"
         :allow-user-filter="true"
+        :allow-site-filter="true"
         title="Riwayat Penambahan Stok"
         description="Daftar transaksi penambahan stok terbaru untuk mendukung audit trail tim."
       />

@@ -325,6 +325,7 @@ export class StockService {
       type: tx.type,
       amount: Number(tx.amount),
       description: tx.description,
+      category: tx.category,
       user: {
         id: tx.user.id,
         username: tx.user.username,

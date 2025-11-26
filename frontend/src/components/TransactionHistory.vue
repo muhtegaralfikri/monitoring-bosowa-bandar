@@ -23,6 +23,7 @@ interface TransactionHistoryItem {
   type: 'IN' | 'OUT';
   amount: number;
   description: string | null;
+  category?: string | null;
   user: TransactionUser;
 }
 
@@ -50,6 +51,7 @@ const props = withDefaults(
     timeZone?: string;
     allowTypeFilter?: boolean;
     allowUserFilter?: boolean;
+    allowSiteFilter?: boolean;
   }>(),
   {
     description: '',
@@ -57,6 +59,7 @@ const props = withDefaults(
     timeZone: MAKASSAR_TIME_ZONE,
     allowTypeFilter: false,
     allowUserFilter: false,
+    allowSiteFilter: false,
   },
 );
 
@@ -91,11 +94,19 @@ const typeOptions = [
   { label: 'Semua', value: 'ALL' as FilterType },
 ];
 
+const siteOptions = [
+  { label: 'Semua', value: 'ALL' as const },
+  { label: 'Genset', value: 'GENSET' as const },
+  { label: 'Tug Assist', value: 'TUG_ASSIST' as const },
+];
+const selectedSite = ref<'ALL' | 'GENSET' | 'TUG_ASSIST'>('ALL');
+
 const effectiveType = computed<FilterType>(() =>
   props.allowTypeFilter ? selectedType.value : props.type,
 );
 
 const showTypeColumn = computed(() => props.allowTypeFilter && selectedType.value === 'ALL');
+const showSiteFilter = computed(() => props.allowSiteFilter && !isOperasional.value);
 
 interface UserOption {
   label: string;
@@ -118,6 +129,11 @@ const availableUserOptions = computed(() => {
 });
 const selectedUser = ref<string | null>(null);
 const operationalSite = computed(() => user.value?.site || null);
+const effectiveSite = computed(() => {
+  if (isOperasional.value) return operationalSite.value;
+  if (!props.allowSiteFilter) return null;
+  return selectedSite.value === 'ALL' ? null : selectedSite.value;
+});
 
 watch(
   () => props.type,
@@ -140,6 +156,13 @@ const formatDate = (value: string | number | Date) =>
     timeZone: resolvedTimeZone.value,
   }).format(new Date(value));
 
+const siteLabel = (value?: string | null) => {
+  if (!value) return '-';
+  if (value === 'GENSET') return 'Genset';
+  if (value === 'TUG_ASSIST') return 'Tug Assist';
+  return value;
+};
+
 const startOfDayIso = (date: Date) => {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -158,8 +181,8 @@ const buildHistoryParams = (options?: { forExport?: boolean }) => {
     page: page.value,
   };
 
-  if (isOperasional.value && operationalSite.value) {
-    params.site = operationalSite.value;
+  if (effectiveSite.value) {
+    params.site = effectiveSite.value;
   }
 
   const exportAllTypesForOp =
@@ -390,13 +413,14 @@ const exportToExcel = async () => {
   }).format(now);
 
   const exportUsageOnly = isOperasional.value && effectiveType.value === 'OUT';
+  const showMonitoringColumn = !effectiveSite.value;
 
   const periodDescription = appliedRange.value
     ? `Periode: ${activeRangeLabel.value}`
     : 'Periode: Semua data';
 
   const stockSummary = summary.value;
-  const siteLabel =
+  const monitoringHeaderLabel =
     operationalSite.value === 'GENSET'
       ? 'Genset'
       : operationalSite.value === 'TUG_ASSIST'
@@ -414,28 +438,30 @@ const exportToExcel = async () => {
   rows.push([titleRow]);
   rows.push([periodDescription]);
   rows.push([`Diekspor: ${exportTime}`]);
-  if (siteLabel) {
-    rows.push([`Monitoring: ${siteLabel}`]);
+  if (monitoringHeaderLabel) {
+    rows.push([`Monitoring: ${monitoringHeaderLabel}`]);
   }
   rows.push([]);
-  const headerRow = exportUsageOnly
-    ? ['No', 'Tanggal', 'Petugas', 'Keterangan', 'Output']
-    : [
-        'No',
-        'Tanggal',
-        'Petugas',
-        'Keterangan',
-        'Stok Awal',
-        'Input',
-        'Output',
-        'Stok Akhir',
-      ];
+  const headerRow: string[] = ['No', 'Tanggal'];
+  if (showMonitoringColumn) {
+    headerRow.push('Monitoring');
+  }
+  headerRow.push('Petugas', 'Keterangan');
+  if (exportUsageOnly || effectiveType.value === 'OUT') {
+    headerRow.push('Output');
+  } else {
+    headerRow.push('Stok Awal', 'Input', 'Output', 'Stok Akhir');
+  }
   const headerRowIndex = rows.length + 1; // 1-based index for XLSX utils
   rows.push(headerRow);
 
   let totalInput = 0;
   let totalOutput = 0;
   const usageDayKeys = new Set<string>();
+  const subtotal = new Map<
+    string,
+    { input: number; output: number; firstStock: number | null; lastStock: number | null }
+  >();
 
   const sortedHistory = [...exportHistory].sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
@@ -444,6 +470,7 @@ const exportToExcel = async () => {
   let runningStock = Number.isFinite(exportOpeningBalance)
     ? Number(exportOpeningBalance)
     : 0;
+  const runningByMonitoring = new Map<string, number>();
 
   let rowNumber = 1;
   sortedHistory.forEach((item) => {
@@ -462,47 +489,114 @@ const exportToExcel = async () => {
       usageDayKeys.add(dayKey);
     }
 
-    const startStock = runningStock;
-    if (runningStock !== null) {
-      runningStock = runningStock + input - output;
-    }
+    if (!exportUsageOnly || item.type === 'OUT' || effectiveType.value === 'OUT') {
+      const monitoringValue = showMonitoringColumn
+        ? siteLabel(item.category ?? effectiveSite.value) || '-'
+        : '';
 
-    if (!exportUsageOnly || item.type === 'OUT') {
-      rows.push(
-        exportUsageOnly
-          ? [
-              rowNumber,
-              formatDate(item.timestamp),
-              item.user?.username || '-',
-              item.description || '-',
-              output,
-            ]
-          : [
-              rowNumber,
-              formatDate(item.timestamp),
-              item.user?.username || '-',
-              item.description || '-',
-              startStock ?? '',
-              input,
-              output,
-              runningStock ?? '',
-            ],
-      );
+      let startStock: number | null = null;
+      let closingStock: number | null = null;
+
+      if (showMonitoringColumn) {
+        const currentRunning = runningByMonitoring.get(monitoringValue) ?? 0;
+        startStock = currentRunning;
+        closingStock = currentRunning + input - output;
+        runningByMonitoring.set(monitoringValue, closingStock);
+      } else {
+        startStock = runningStock;
+        if (runningStock !== null) {
+          closingStock = runningStock + input - output;
+          runningStock = closingStock;
+        }
+      }
+
+      const bucketKey = monitoringValue || '-';
+      if (!subtotal.has(bucketKey)) {
+        subtotal.set(bucketKey, {
+          input: 0,
+          output: 0,
+          firstStock: startStock ?? null,
+          lastStock: closingStock ?? null,
+        });
+      }
+      const bucket = subtotal.get(bucketKey)!;
+      bucket.input += input;
+      bucket.output += output;
+      if (bucket.firstStock === null) {
+        bucket.firstStock = startStock ?? null;
+      }
+      bucket.lastStock = closingStock ?? bucket.lastStock;
+
+      const baseCells = [
+        rowNumber,
+        formatDate(item.timestamp),
+        ...(showMonitoringColumn ? [monitoringValue] : []),
+        item.user?.username || '-',
+        item.description || '-',
+      ];
+
+      if (exportUsageOnly || effectiveType.value === 'OUT') {
+        rows.push([...baseCells, output]);
+      } else {
+        rows.push([
+          ...baseCells,
+          startStock ?? '',
+          input,
+          output,
+          closingStock ?? '',
+        ]);
+      }
       rowNumber += 1;
     }
   });
 
   rows.push([]);
-  rows.push(
-    exportUsageOnly
-      ? ['', '', 'Total', '', totalOutput]
-      : ['', '', '', 'Total', '', totalInput, totalOutput, runningStock ?? ''],
-  );
+
+  // Subtotal per monitoring (hanya saat kolom monitoring ditampilkan).
+  const keteranganIdx = headerRow.indexOf('Keterangan');
+  const inputIdx = headerRow.indexOf('Input');
+  const outputIdx = headerRow.indexOf('Output');
+  const stokAkhirIdx = headerRow.indexOf('Stok Akhir');
+  if (showMonitoringColumn && subtotal.size > 1) {
+    rows.push([]);
+    rows.push(['', '', 'Subtotal per Monitoring']);
+    subtotal.forEach((bucket, key) => {
+      const subRow = Array(headerRow.length).fill('');
+      const monitoringIdx = headerRow.indexOf('Monitoring');
+      if (monitoringIdx >= 0) subRow[monitoringIdx] = key;
+      subRow[keteranganIdx] = 'Subtotal';
+      if (inputIdx >= 0) subRow[inputIdx] = bucket.input;
+      if (outputIdx >= 0) subRow[outputIdx] = bucket.output;
+      if (stokAkhirIdx >= 0 && bucket.lastStock !== null) subRow[stokAkhirIdx] = bucket.lastStock;
+      rows.push(subRow);
+    });
+    rows.push([]);
+  }
+
+  const totalRow = Array(headerRow.length).fill('');
+  totalRow[keteranganIdx] = 'Total';
+  const isUsageView = exportUsageOnly || effectiveType.value === 'OUT';
+  if (isUsageView) {
+    if (outputIdx >= 0) totalRow[outputIdx] = totalOutput;
+  } else {
+    if (inputIdx >= 0) totalRow[inputIdx] = totalInput;
+    if (outputIdx >= 0) totalRow[outputIdx] = totalOutput;
+    if (stokAkhirIdx >= 0) {
+      const combinedClosing = showMonitoringColumn
+        ? Array.from(runningByMonitoring.values()).reduce((sum, v) => sum + (v ?? 0), 0)
+        : runningStock ?? 0;
+      totalRow[stokAkhirIdx] = combinedClosing;
+    }
+  }
+  rows.push(totalRow);
 
   if (exportUsageOnly) {
     const daysCount = usageDayKeys.size || 1;
     const avgPerDay = totalOutput / daysCount;
-    rows.push(['', '', 'Rata-rata/Hari', '', avgPerDay]);
+    const avgRow = Array(headerRow.length).fill('');
+    avgRow[keteranganIdx] = 'Rata-rata/Hari';
+    if (outputIdx >= 0) avgRow[outputIdx] = avgPerDay;
+    rows.push(avgRow);
   }
 
   const worksheet = XLSX.utils.aoa_to_sheet(rows);
@@ -535,7 +629,10 @@ const exportToExcel = async () => {
   // If site row exists (row index 3), merge it too.
   const firstCellRow3 = rows[3]?.[0];
   const hasSiteRow =
-    siteLabel && titleRow && typeof firstCellRow3 === 'string' && firstCellRow3.startsWith('Lokasi:');
+    monitoringHeaderLabel &&
+    titleRow &&
+    typeof firstCellRow3 === 'string' &&
+    firstCellRow3.startsWith('Monitoring:');
   if (hasSiteRow) {
     merges.push({ s: { r: 3, c: 0 }, e: { r: 3, c: lastColIndex } });
   }
@@ -653,7 +750,7 @@ const exportToExcel = async () => {
       : effectiveType.value === 'OUT'
         ? 'pemakaian'
         : 'semua';
-  const siteSlug = operationalSite.value ? operationalSite.value.toLowerCase() : null;
+  const siteSlug = effectiveSite.value ? effectiveSite.value.toLowerCase() : null;
   const filename = `riwayat-${filenameType}${siteSlug ? `-${siteSlug}` : ''}-${new Date()
     .toISOString()
     .split('T')[0]}.xlsx`;
@@ -698,6 +795,9 @@ const resetFilters = () => {
   if (props.allowUserFilter) {
     selectedUser.value = null;
   }
+  if (showSiteFilter.value) {
+    selectedSite.value = 'ALL';
+  }
   selectedPageSize.value = props.limit;
   searchTerm.value = '';
   selectedRange.value = null;
@@ -711,6 +811,7 @@ const showResetAll = computed(
   () =>
     props.allowTypeFilter ||
     props.allowUserFilter ||
+    (showSiteFilter.value && selectedSite.value !== 'ALL') ||
     Boolean(appliedRange.value) ||
     selectedPageSize.value !== props.limit ||
     Boolean(searchTerm.value.trim()),
@@ -740,6 +841,16 @@ watch(
   { flush: 'post' },
 );
 
+watch(
+  selectedSite,
+  () => {
+    if (!showSiteFilter.value) return;
+    page.value = 1;
+    fetchHistory();
+  },
+  { flush: 'post' },
+);
+
 const filterSummary = computed(() => {
   const summaries: string[] = [];
   if (props.allowTypeFilter) {
@@ -750,6 +861,15 @@ const filterSummary = computed(() => {
           ? 'Penambahan'
           : 'Pemakaian'
     }`);
+  }
+  if (showSiteFilter.value) {
+    const siteText =
+      selectedSite.value === 'ALL'
+        ? 'Semua'
+        : selectedSite.value === 'GENSET'
+          ? 'Genset'
+          : 'Tug Assist';
+    summaries.push(`Monitoring: ${siteText}`);
   }
   if (props.allowUserFilter && selectedUser.value) {
     const userLabel = userOptions.value.find((opt) => opt.value === selectedUser.value)?.label;
@@ -840,6 +960,20 @@ const filterSummary = computed(() => {
               id="history-type"
               v-model="selectedType"
               :options="typeOptions"
+              optionLabel="label"
+              optionValue="value"
+              class="w-full"
+            />
+          </div>
+          <div
+            v-if="showSiteFilter"
+            class="filter-field site-filter"
+          >
+            <label class="filter-label" for="history-site">Monitoring</label>
+            <Dropdown
+              id="history-site"
+              v-model="selectedSite"
+              :options="siteOptions"
               optionLabel="label"
               optionValue="value"
               class="w-full"
