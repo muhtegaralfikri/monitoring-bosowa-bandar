@@ -122,9 +122,9 @@ npm test
 flowchart LR
   A[User: Admin/Operasional] --> B[Vue 3 SPA\nPrimeVue + Pinia]
   B --> C[Axios Interceptor\nTambah Header Bearer]
-  C --> D[/auth/login]
-  C --> E[/stock/in & /stock/out]
-  C --> F[/stock/history & /stock/trend]
+  C --> D[/auth/login/]
+  C --> E[/stock/in & /stock/out/]
+  C --> F[/stock/history & /stock/trend/]
   D & E & F --> G[NestJS API]
   G --> H[Auth Guard JWT\n+ Role Guard]
   H --> I[Service Layer]
