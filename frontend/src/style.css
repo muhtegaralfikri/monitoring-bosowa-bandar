@@ -394,3 +394,34 @@ body {
   background: transparent !important;
   box-shadow: none !important;
 }
+
+/* ==========================================================================
+  PrimeVue Toast responsive fix (agar rapi di mobile)
+========================================================================== */
+.p-toast {
+  max-width: min(24rem, calc(100vw - 2rem));
+}
+
+@media (max-width: 640px) {
+  .p-toast {
+    width: calc(100vw - 1.5rem);
+    max-width: none;
+  }
+
+  .p-toast-top-right {
+    top: 0.75rem;
+    right: 0.75rem;
+    left: 0.75rem;
+    margin: 0;
+    width: auto;
+  }
+
+  .p-toast .p-toast-message {
+    margin: 0;
+    overflow: visible;
+  }
+
+  .p-toast .p-toast-message-content {
+    padding-right: 2.5rem;
+  }
+}
