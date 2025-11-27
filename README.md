@@ -117,39 +117,6 @@ npm test
   ```
 - Tambahkan skenario baru dengan membuat file `*.e2e-spec.ts` di `backend/test/` (mis. login, guard role, transaksi stok) dan gunakan `supertest(app.getHttpServer())` untuk menembak API.
 
-## Flowchart (alur utama)
-```mermaid
-flowchart LR
-  A[User: Admin/Operasional]
-  B[Vue 3 SPA\nPrimeVue + Pinia]
-  C[Axios Interceptor\nTambah Header Bearer]
-  D[/auth/login/]
-  E[/stock/in & /stock/out/]
-  F[/stock/history & /stock/trend/]
-  G[NestJS API]
-  H[Auth Guard JWT\n+ Role Guard]
-  I[Service Layer]
-  J[TypeORM Repo]
-  K[(PostgreSQL/MySQL)]
-  L[Swagger /api/docs\n(opsional)]
-  M[Export Excel\n(xlsx-js-style)]
-
-  A --> B
-  B --> C
-  C --> D
-  C --> E
-  C --> F
-  D --> G
-  E --> G
-  F --> G
-  G --> H
-  H --> I
-  I --> J
-  J --> K
-  G --> L
-  B --> M
-```
-
 ## Build & deploy singkat
 - Backend: `npm run build` lalu jalankan `node dist/main`. Gunakan PM2/systemd untuk daemon, dan jalankan `npm run db:migration:run` sebelum start.
 - Frontend: `npm run build` menghasilkan `frontend/dist` yang bisa disajikan via Nginx/Apache/hosting statis. Pastikan `VITE_API_URL` mengarah ke domain API Anda.
