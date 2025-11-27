@@ -120,18 +120,34 @@ npm test
 ## Flowchart (alur utama)
 ```mermaid
 flowchart LR
-  A[User: Admin/Operasional] --> B[Vue 3 SPA\nPrimeVue + Pinia]
-  B --> C[Axios Interceptor\nTambah Header Bearer]
-  C --> D[/auth/login/]
-  C --> E[/stock/in & /stock/out/]
-  C --> F[/stock/history & /stock/trend/]
-  D & E & F --> G[NestJS API]
-  G --> H[Auth Guard JWT\n+ Role Guard]
-  H --> I[Service Layer]
-  I --> J[TypeORM Repo]
-  J --> K[(PostgreSQL/MySQL)]
-  G --> L[Swagger /api/docs\n(opsional)]
-  B --> M[Export Excel\n(xlsx-js-style)]
+  A[User: Admin/Operasional]
+  B[Vue 3 SPA\nPrimeVue + Pinia]
+  C[Axios Interceptor\nTambah Header Bearer]
+  D[/auth/login/]
+  E[/stock/in & /stock/out/]
+  F[/stock/history & /stock/trend/]
+  G[NestJS API]
+  H[Auth Guard JWT\n+ Role Guard]
+  I[Service Layer]
+  J[TypeORM Repo]
+  K[(PostgreSQL/MySQL)]
+  L[Swagger /api/docs\n(opsional)]
+  M[Export Excel\n(xlsx-js-style)]
+
+  A --> B
+  B --> C
+  C --> D
+  C --> E
+  C --> F
+  D --> G
+  E --> G
+  F --> G
+  G --> H
+  H --> I
+  I --> J
+  J --> K
+  G --> L
+  B --> M
 ```
 
 ## Build & deploy singkat
