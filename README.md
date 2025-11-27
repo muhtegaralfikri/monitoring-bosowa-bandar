@@ -2,6 +2,13 @@
 
 Sistem pemantauan dan pencatatan stok bahan bakar untuk tim Bosowa Bandar. Backend memakai NestJS + TypeORM dengan JWT (access & refresh token), frontend memakai Vue 3 + PrimeVue + Pinia. Alur dipisah untuk admin (penambahan stok) dan operasional (pemakaian stok) dengan laporan tren dan riwayat yang bisa diekspor.
 
+## Ringkasan arsitektur & infrastruktur
+- **Client (SPA)**: Vue 3 + Vite menyajikan dashboard, autentikasi JWT tersimpan di client (local storage) lalu disuntik ke header `Authorization` via Axios interceptor.
+- **API**: NestJS 11 dengan modul auth (JWT + refresh), modul user (role-based guard), modul stok & histori. Menggunakan TypeORM untuk akses DB dan migrasi skema.
+- **Database**: PostgreSQL atau MySQL. Seluruh perubahan skema dicatat sebagai migrasi (`backend/src/database/migrations`); seeder opsional (`SEED_DEFAULT_USERS=true`) untuk membuat akun awal.
+- **Dokumentasi API**: Swagger opsional di `/api/docs` (aktifkan `ENABLE_SWAGGER=true`).
+- **Deployment tipikal**: Nginx/Apache sebagai reverse proxy; proses backend dijalankan dengan PM2/systemd (`node dist/main`), frontend dibangun menjadi aset statis `frontend/dist` lalu disajikan oleh web server yang sama atau CDN. Variabel lingkungan di-inject melalui file `.env` masing-masing.
+
 ## Fitur utama
 - Autentikasi JWT + refresh token, guard role-based (`admin`, `operasional`) dan profil pengguna (`/auth/me`).
 - Stok & transaksi: kartu ringkasan stok harian, grafik tren stok dan tren in/out, input stok masuk (admin) dan pemakaian (operasional) dengan timezone `Asia/Makassar`.
@@ -9,9 +16,34 @@ Sistem pemantauan dan pencatatan stok bahan bakar untuk tim Bosowa Bandar. Backe
 - Manajemen pengguna: admin dapat membuat/mengubah/menghapus pengguna, menetapkan role, serta mengikat user operasional ke lokasi wajib.
 - Swagger API optional (`ENABLE_SWAGGER=true`) di `/api/docs`.
 
-## Tumpukan teknologi
-- Backend: NestJS 11, TypeORM, Passport (JWT + Local), PostgreSQL/MySQL, Jest untuk test.
-- Frontend: Vue 3 + Vite, PrimeVue + PrimeFlex, Pinia, Vue Router, Axios, Chart.js, xlsx-js-style.
+## Dependensi utama & kegunaannya
+**Backend (NestJS):**
+- `@nestjs/common`, `@nestjs/core`, `@nestjs/platform-express`: kerangka NestJS utama.
+- `@nestjs/jwt`, `passport`, `passport-jwt`, `passport-local`: autentikasi JWT + refresh dan login berbasis email/password.
+- `@nestjs/typeorm`, `typeorm`, `pg`, `mysql2`: ORM dan driver Postgres/MySQL dengan dukungan migrasi.
+- `class-validator`, `class-transformer`: validasi & transformasi DTO request/response.
+- `bcrypt`: hashing password.
+- `@nestjs/swagger`: dokumentasi otomatis Swagger (opsional via env).
+- Testing: `jest`, `@nestjs/testing`, `supertest` untuk unit & e2e.
+
+**Frontend (Vue 3):**
+- `vue`, `vue-router`, `pinia`: kerangka SPA, routing, state management (auth/token).
+- `primevue`, `@primeuix/themes`, `primeflex`, `primeicons`: komponen UI, tema Lara, utilitas layout.
+- `axios`: HTTP client dengan interceptor token.
+- `chart.js`: grafik tren stok dan in/out.
+- `xlsx-js-style`: ekspor riwayat transaksi ke Excel.
+- `jwt-decode`: membaca payload JWT untuk role/expired.
+- Build tools: Vite, TypeScript, `vue-tsc`.
+
+## Vue Router & alur proteksi
+- Lokasi router: `frontend/src/router/index.ts`.
+- Rute publik: `/` (home), `/login`.
+- Rute admin: `/dashboard/admin`, `/dashboard/admin/users` dengan `meta.requiresAuth=true` dan `allowedRoles=['admin']`.
+- Rute operasional: `/dashboard/operasional` dengan `allowedRoles=['operasional']`.
+- Guard `beforeEach` membaca token/user dari Pinia (`useAuthStore`), sinkron ke `localStorage`, lalu:
+  - Jika `requiresAuth` tapi belum login → redirect ke `/login?redirect=<tujuan>`.
+  - Jika role tidak cocok → arahkan ke dashboard sesuai role; jika tidak ada role valid, logout dan kembali ke login.
+- Tambah rute terlindungi baru dengan `meta: { requiresAuth: true, allowedRoles: [...] }` supaya tervalidasi guard.
 
 ## Struktur proyek
 ```
@@ -63,14 +95,6 @@ Login via `/login`, lalu dashboard akan otomatis diarahkan sesuai role.
 
 `DB_SYNCHRONIZE` dimatikan secara default; semua perubahan skema dicatat lewat migrasi di `backend/src/database/migrations`.
 
-## Akun bawaan (jika `SEED_DEFAULT_USERS=true`)
-| Role | Email | Password | Catatan |
-| --- | --- | --- | --- |
-| Admin | `admin@example.com` | `password123` | Bisa kelola user & input stok |
-| Operasional | `op@example.com` | `password123` | Hanya pemakaian stok, terikat lokasi |
-
-Segera ubah password setelah deploy.
-
 ## Ringkasan endpoint utama
 - Auth: `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me`
 - Users (admin): `GET/POST/PATCH/DELETE /users` untuk CRUD pengguna dan role/lokasi
@@ -81,6 +105,33 @@ Backend unit test:
 ```bash
 cd backend
 npm test
+```
+
+## E2E
+- Backend e2e menggunakan Jest + Supertest (`backend/test/app.e2e-spec.ts`) untuk mem-boot `AppModule` penuh lalu memanggil endpoint HTTP.
+- Menjalankan e2e:
+  ```bash
+  cd backend
+  npm install
+  npm run test:e2e
+  ```
+- Tambahkan skenario baru dengan membuat file `*.e2e-spec.ts` di `backend/test/` (mis. login, guard role, transaksi stok) dan gunakan `supertest(app.getHttpServer())` untuk menembak API.
+
+## Flowchart (alur utama)
+```mermaid
+flowchart LR
+  A[User: Admin/Operasional] --> B[Vue 3 SPA\nPrimeVue + Pinia]
+  B --> C[Axios Interceptor\nTambah Header Bearer]
+  C --> D[/auth/login]
+  C --> E[/stock/in & /stock/out]
+  C --> F[/stock/history & /stock/trend]
+  D & E & F --> G[NestJS API]
+  G --> H[Auth Guard JWT\n+ Role Guard]
+  H --> I[Service Layer]
+  I --> J[TypeORM Repo]
+  J --> K[(PostgreSQL/MySQL)]
+  G --> L[Swagger /api/docs\n(opsional)]
+  B --> M[Export Excel\n(xlsx-js-style)]
 ```
 
 ## Build & deploy singkat
