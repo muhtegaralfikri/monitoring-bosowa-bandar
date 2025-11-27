@@ -1015,6 +1015,7 @@ const filterSummary = computed(() => {
               :disabled="loading"
               showButtonBar
               placeholder="Pilih rentang tanggal"
+              class="w-full"
             />
           </div>
           <div class="filter-field quick-range-filter">
