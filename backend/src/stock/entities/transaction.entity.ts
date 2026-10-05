@@ -19,7 +19,7 @@ export class TransactionEntity {
   @Column({ length: 3 }) // 'IN' or 'OUT'
   type: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column({ type: 'decimal', precision: 12, scale: 6 })
   amount: number;
 
   @Column({ type: 'text', nullable: true })

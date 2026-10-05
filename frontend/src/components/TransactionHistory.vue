@@ -145,8 +145,11 @@ watch(
 
 const formatter = new Intl.NumberFormat('id-ID', {
   minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
+  maximumFractionDigits: 6,
 });
+
+const formatAmount = (value: number | null | undefined) =>
+  value === null || value === undefined ? '' : formatter.format(value);
 
 const formatDate = (value: string | number | Date) =>
   new Intl.DateTimeFormat('id-ID', {
@@ -536,14 +539,14 @@ const exportToExcel = async () => {
       ];
 
       if (exportUsageOnly || effectiveType.value === 'OUT') {
-        rows.push([...baseCells, output]);
+        rows.push([...baseCells, formatAmount(output)]);
       } else {
         rows.push([
           ...baseCells,
-          startStock ?? '',
-          input,
-          output,
-          closingStock ?? '',
+          formatAmount(startStock),
+          formatAmount(input),
+          formatAmount(output),
+          formatAmount(closingStock),
         ]);
       }
       rowNumber += 1;
@@ -565,9 +568,9 @@ const exportToExcel = async () => {
       const monitoringIdx = headerRow.indexOf('Monitoring');
       if (monitoringIdx >= 0) subRow[monitoringIdx] = key;
       subRow[keteranganIdx] = 'Subtotal';
-      if (inputIdx >= 0) subRow[inputIdx] = bucket.input;
-      if (outputIdx >= 0) subRow[outputIdx] = bucket.output;
-      if (stokAkhirIdx >= 0 && bucket.lastStock !== null) subRow[stokAkhirIdx] = bucket.lastStock;
+      if (inputIdx >= 0) subRow[inputIdx] = formatAmount(bucket.input);
+      if (outputIdx >= 0) subRow[outputIdx] = formatAmount(bucket.output);
+      if (stokAkhirIdx >= 0) subRow[stokAkhirIdx] = formatAmount(bucket.lastStock);
       rows.push(subRow);
     });
     rows.push([]);
@@ -577,15 +580,15 @@ const exportToExcel = async () => {
   totalRow[keteranganIdx] = 'Total';
   const isUsageView = exportUsageOnly || effectiveType.value === 'OUT';
   if (isUsageView) {
-    if (outputIdx >= 0) totalRow[outputIdx] = totalOutput;
+    if (outputIdx >= 0) totalRow[outputIdx] = formatAmount(totalOutput);
   } else {
-    if (inputIdx >= 0) totalRow[inputIdx] = totalInput;
-    if (outputIdx >= 0) totalRow[outputIdx] = totalOutput;
+    if (inputIdx >= 0) totalRow[inputIdx] = formatAmount(totalInput);
+    if (outputIdx >= 0) totalRow[outputIdx] = formatAmount(totalOutput);
     if (stokAkhirIdx >= 0) {
       const combinedClosing = showMonitoringColumn
         ? Array.from(runningByMonitoring.values()).reduce((sum, v) => sum + (v ?? 0), 0)
         : runningStock ?? 0;
-      totalRow[stokAkhirIdx] = combinedClosing;
+      totalRow[stokAkhirIdx] = formatAmount(combinedClosing);
     }
   }
   rows.push(totalRow);
@@ -595,7 +598,7 @@ const exportToExcel = async () => {
     const avgPerDay = totalOutput / daysCount;
     const avgRow = Array(headerRow.length).fill('');
     avgRow[keteranganIdx] = 'Rata-rata/Hari';
-    if (outputIdx >= 0) avgRow[outputIdx] = avgPerDay;
+    if (outputIdx >= 0) avgRow[outputIdx] = formatAmount(avgPerDay);
     rows.push(avgRow);
   }
 
@@ -701,7 +704,7 @@ const exportToExcel = async () => {
     );
   }
 
-  // Numbers right aligned tanpa pemisah ribuan dan tanpa desimal.
+  // Amount strings already use id-ID separators, keep them right aligned.
   const numericColumns = exportUsageOnly
     ? [headerRow.indexOf('Output')]
     : [
@@ -715,7 +718,6 @@ const exportToExcel = async () => {
       const ref = XLSX.utils.encode_cell({ r: r - 1, c: col });
       applyCellStyle(ref, {
         alignment: { horizontal: 'right' },
-        numFmt: '0;[Red]-0;0',
       });
     });
   }
@@ -737,7 +739,6 @@ const exportToExcel = async () => {
     applyRowStyle(avgRowIndex + 1, [lastColIndex - 1, lastColIndex], {
       font: { italic: true },
       alignment: { horizontal: 'right' },
-      numFmt: '0;[Red]-0;0',
     });
   }
 
