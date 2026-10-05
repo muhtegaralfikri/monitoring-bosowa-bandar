@@ -34,7 +34,7 @@ const formatLiters = (value?: number | null) => {
   }
   return `${value.toLocaleString('id-ID', {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 6,
   })} L`;
 };
 
@@ -137,7 +137,7 @@ const handleSubmit = async () => {
     toast.add({
       severity: 'success',
       summary: 'Berhasil',
-      detail: `Pemakaian ${amount.value} liter berhasil dicatat.`,
+      detail: `Pemakaian ${formatLiters(amount.value)} berhasil dicatat.`,
       life: 3000,
     });
 
@@ -221,6 +221,10 @@ const handleSubmit = async () => {
                 v-model="amount"
                 placeholder="Masukkan jumlah liter"
                 mode="decimal"
+                locale="id-ID"
+                :minFractionDigits="0"
+                :maxFractionDigits="6"
+                :useGrouping="false"
                 class="w-full"
               />
             </div>

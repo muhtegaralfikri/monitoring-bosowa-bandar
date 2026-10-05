@@ -31,6 +31,12 @@ const siteOptions = [
   { label: 'Tug Assist', value: 'TUG_ASSIST' },
 ];
 
+const formatLiters = (value: number) =>
+  value.toLocaleString('id-ID', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 6,
+  });
+
 const todayPlaceholder = computed(() =>
   new Intl.DateTimeFormat('id-ID', {
     day: '2-digit',
@@ -81,7 +87,7 @@ const handleSubmit = async () => {
     toast.add({
       severity: 'success',
       summary: 'Berhasil',
-      detail: `Stok berhasil ditambah ${amount.value} liter.`,
+      detail: `Stok berhasil ditambah ${formatLiters(amount.value)} liter.`,
       life: 3000,
     });
 
@@ -155,6 +161,10 @@ const handleSubmit = async () => {
                 v-model="amount"
                 placeholder="Masukkan jumlah liter"
                 mode="decimal"
+                locale="id-ID"
+                :minFractionDigits="0"
+                :maxFractionDigits="6"
+                :useGrouping="false"
                 class="w-full"
               />
             </div>
