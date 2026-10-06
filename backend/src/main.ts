@@ -34,7 +34,7 @@ async function bootstrap() {
 
   if (isSwaggerEnabled) {
     const config = new DocumentBuilder()
-      .setTitle('Fuel Ledger System API')
+      .setTitle('Bosowa Monitoring Sistem API')
       .setDescription('Dokumentasi API untuk Sistem Manajemen Stok Bahan Bakar Bosowa')
       .setVersion('1.0')
       .addTag('stock', 'Operasi manajemen stok')
