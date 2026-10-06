@@ -73,7 +73,7 @@ const handleLogout = async () => {
 <template>
   <header class="navbar-shell">
     <button class="brand" type="button" @click="router.push('/')">
-      <img :src="logoSrc" alt="Bosowa Fuel" class="brand__logo" />
+      <img :src="logoSrc" alt="Bosowa Monitoring Sistem" class="brand__logo" />
     </button>
 
     <div class="nav-group">

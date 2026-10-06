@@ -35,7 +35,7 @@ const handleLogin = async () => {
   <section class="auth-page">
     <div class="auth-page__inner">
       <div class="auth-page__hero">
-        <p class="eyebrow">Fuel Ledger System</p>
+        <p class="eyebrow">Bosowa Monitoring Sistem</p>
         <h1>Catat stok & pemakaian solar dengan presisi.</h1>
         <p class="subtitle">
           Platform terintegrasi untuk tim admin & operasional Bosowa. Data real time,
@@ -117,7 +117,7 @@ const handleLogin = async () => {
 
           <div class="help-text">
             <i class="pi pi-info-circle mr-2" />
-            Perlu akses baru? Hubungi administrator Bosowa Fuel Ledger.
+            Perlu akses baru? Hubungi administrator Bosowa Monitoring Sistem.
           </div>
         </template>
       </Card>
