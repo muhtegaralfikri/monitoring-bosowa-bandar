@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth.store';
-import logoSrc from '@/assets/logo.png';
+import logoSrc from '@/assets/logo.webp';
 import Menubar from 'primevue/menubar';
 
 const router = useRouter();

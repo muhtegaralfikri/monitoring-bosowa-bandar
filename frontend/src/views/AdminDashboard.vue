@@ -176,7 +176,7 @@ const handleSubmit = async () => {
                 v-model="description"
                 rows="3"
                 autoResize
-                placeholder="Contoh: Pembelian premium 5 KL dari Pertamina"
+                placeholder="Isi deskripsi penambahan stok (opsional)"
                 class="w-full"
               />
             </div>

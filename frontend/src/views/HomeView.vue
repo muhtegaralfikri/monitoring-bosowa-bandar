@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useStockStore, type SiteKey } from '@/stores/stock.store';
 import Card from 'primevue/card';
@@ -31,6 +31,8 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  metricAnimations.forEach((animation) => cancelAnimationFrame(animation));
+  metricAnimations.clear();
 });
 
 const formatLiters = (value?: number | null) => {
@@ -39,6 +41,38 @@ const formatLiters = (value?: number | null) => {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   })} Liter`;
+};
+
+const animatedMetricValues = reactive<Record<string, number>>({});
+const metricAnimations = new Map<string, number>();
+
+const animateMetricValue = (key: string, target: number | null) => {
+  const nextValue = target ?? 0;
+  const startValue = 0;
+  const startedAt = performance.now();
+  const duration = 3000;
+  const activeAnimation = metricAnimations.get(key);
+
+  if (activeAnimation) cancelAnimationFrame(activeAnimation);
+
+  const tick = (now: number) => {
+    const progress = Math.min((now - startedAt) / duration, 1);
+    const easedProgress = 1 - Math.pow(1 - progress, 3);
+    animatedMetricValues[key] = Math.max(
+      0,
+      startValue + (nextValue - startValue) * easedProgress,
+    );
+
+    if (progress < 1) {
+      metricAnimations.set(key, requestAnimationFrame(tick));
+      return;
+    }
+
+    animatedMetricValues[key] = nextValue;
+    metricAnimations.delete(key);
+  };
+
+  metricAnimations.set(key, requestAnimationFrame(tick));
 };
 
 const siteKeys: SiteKey[] = ['GENSET', 'TUG_ASSIST'];
@@ -91,6 +125,17 @@ const siteDisplayNames: Record<SiteKey, string> = {
 const trendChartOptions = computed<ChartOptions<'line'>>(() => ({
   responsive: true,
   maintainAspectRatio: false,
+  animation: {
+    duration: 3000,
+    easing: 'easeOutQuart',
+  },
+  animations: {
+    y: {
+      from: 0,
+      duration: 3000,
+      easing: 'easeOutQuart',
+    },
+  },
   plugins: {
     legend: {
       display: false,
@@ -151,6 +196,17 @@ const trendChartOptions = computed<ChartOptions<'line'>>(() => ({
 const inOutChartOptions = computed<ChartOptions<'bar'>>(() => ({
   responsive: true,
   maintainAspectRatio: false,
+  animation: {
+    duration: 3000,
+    easing: 'easeOutQuart',
+  },
+  animations: {
+    y: {
+      from: 0,
+      duration: 3000,
+      easing: 'easeOutQuart',
+    },
+  },
   plugins: {
     legend: {
       position: 'top',
@@ -210,6 +266,18 @@ const inOutChartOptions = computed<ChartOptions<'bar'>>(() => ({
     TUG_ASSIST: build('TUG_ASSIST'),
   };
 });
+
+watch(
+  siteSummaryCards,
+  (sections) => {
+    sections.forEach((section) => {
+      section.cards.forEach((metric) => {
+        animateMetricValue(metric.key, metric.value);
+      });
+    });
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
@@ -234,7 +302,7 @@ const inOutChartOptions = computed<ChartOptions<'bar'>>(() => ({
               </div>
               <div v-else-if="siteSummaries[siteBlock.site]">
                 <h2 class="text-3xl font-bold" :class="metric.accent">
-                  {{ formatLiters(metric.value) }}
+                  {{ formatLiters(animatedMetricValues[metric.key]) }}
                 </h2>
               </div>
               <div v-else-if="siteSummaryError[siteBlock.site]">

@@ -236,7 +236,7 @@ const handleSubmit = async () => {
                 v-model="description"
                 rows="3"
                 autoResize
-                placeholder="Contoh: Pemakaian untuk Kapal X"
+                placeholder="Isi deskripsi pemakaian"
                 class="w-full"
               />
             </div>
